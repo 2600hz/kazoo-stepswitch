@@ -20,6 +20,7 @@
 *.swp
 
 *.coverdata
+cover/
 
 /.edts
 .project
