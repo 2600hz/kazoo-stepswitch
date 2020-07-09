@@ -484,5 +484,5 @@ response_message(CallEvt) ->
 -spec get_event_type(kz_call_event:doc()) ->
           {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(JObj) ->
-    {C, E} = kz_util:get_event_type(JObj),
+    {C, E} = kz_api:event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.
