@@ -162,7 +162,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
                          ,resource_req=OffnetReq
                          ,msg_id=MsgId
                          }) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             lager:debug("channel was destroy while waiting for execute extension"),
             gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, OffnetReq)});
