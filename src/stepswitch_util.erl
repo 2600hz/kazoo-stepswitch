@@ -72,7 +72,8 @@ get_inbound_destination(JObj) ->
 %% the value Default
 %% @end
 %%------------------------------------------------------------------------------
--spec convert_to_e164_format(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
+-spec convert_to_e164_format(kz_term:api_binary(), Default) -> kz_term:ne_binary() | Default.
+convert_to_e164_format('undefined', Default) -> Default;
 convert_to_e164_format(Number, Default) ->
     case knm_converters:is_reconcilable(Number) of
         'true' -> knm_converters:normalize(Number);

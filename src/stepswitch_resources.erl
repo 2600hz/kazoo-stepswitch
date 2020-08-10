@@ -597,7 +597,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
--spec check_diversion_fields(kapi_offnet_resource:req()) -> kz_term:ne_binary().
+-spec check_diversion_fields(kapi_offnet_resource:req()) -> kz_term:api_binary().
 check_diversion_fields(OffnetJObj) ->
     case kapi_offnet_resource:custom_sip_header(OffnetJObj, <<"Diversions">>) of
         [Diversion|_] ->
