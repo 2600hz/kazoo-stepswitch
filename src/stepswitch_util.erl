@@ -219,22 +219,22 @@ shortdial_correction_length(_Number, _CIDNum, FixedLength) ->
 
 -spec maybe_constrain_shortdial_correction(integer()) -> integer().
 maybe_constrain_shortdial_correction(Length) ->
-    maybe_constrain_shortdial_correction(Length
-                                        ,kapps_config:get_integer(?SS_CONFIG_CAT
-                                                                 ,<<"min_shortdial_correction">>
-                                                                 ,2
-                                                                 )
-                                        ,kapps_config:get_integer(?SS_CONFIG_CAT
-                                                                 ,<<"max_shortdial_correction">>
-                                                                 ,5
-                                                                 )
-                                        ).
+    Upperbound = kapps_config:get_integer(?SS_CONFIG_CAT
+                                         ,<<"max_shortdial_correction">>
+                                         ,5
+                                         ),
+    Lowerbound = kapps_config:get_integer(?SS_CONFIG_CAT
+                                         ,<<"min_shortdial_correction">>
+                                         ,2
+                                         ),
+    maybe_constrain_shortdial_correction(Length, Lowerbound, Upperbound).
 
 -spec maybe_constrain_shortdial_correction(integer(), integer(), integer()) -> integer().
-maybe_constrain_shortdial_correction(Length, Min, Max) when Length >= Min
-                                                            andalso Length =< Max ->
+maybe_constrain_shortdial_correction(Length, Lowerbound, Upperbound)
+  when Length >= Lowerbound
+       andalso Length =< Upperbound ->
     Length;
-maybe_constrain_shortdial_correction(_Length, _Min, _Max) ->
+maybe_constrain_shortdial_correction(_Length, _Low, _Up) ->
     0.
 
 -spec get_sip_headers(kapi_offnet_resource:req()) -> kz_json:object().
