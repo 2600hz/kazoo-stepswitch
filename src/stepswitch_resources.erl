@@ -658,7 +658,7 @@ filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
 
 -spec update_ccvs(kz_json:object(), kz_term:proplist()) -> kz_json:object().
 update_ccvs(Endpoint, Updates) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
 
 -spec evaluate_rules(re:mp(), kz_term:ne_binary()) ->
@@ -984,7 +984,7 @@ fetch_local_resources(AccountId, JObjs) ->
       [kz_json:set_values([{<<"Is-Global">>, 'false'}
                           ,{<<"Proxies">>, kz_json:from_list(Proxies)}
                           ]
-                         ,kz_json:get_value(<<"doc">>, JObj)
+                         ,kz_json:get_json_value(<<"doc">>, JObj)
                          )
        || JObj <- JObjs
       ]).
@@ -1001,8 +1001,8 @@ fetch_account_dedicated_proxies(AccountId) ->
 
 -spec build_account_dedicated_proxy(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 build_account_dedicated_proxy(Proxy) ->
-    Zone = kz_json:get_value(<<"zone">>, Proxy),
-    ProxyIP = kz_json:get_value(<<"ip">>, Proxy),
+    Zone = kz_json:get_ne_binary_value(<<"zone">>, Proxy),
+    ProxyIP = kz_json:get_ne_binary_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
 
 %%------------------------------------------------------------------------------
@@ -1061,14 +1061,14 @@ create_resource([{ResourceClassifier, ResourceClassifierJObj}|ResourceClassifier
 
 -spec create_classifier_resource(kzd_resources:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 create_classifier_resource(ResourceJObj, ClassifierJObj, Classifier, ConfigClassifier) ->
-    DefaultRegex = kz_json:get_value(<<"regex">>, ConfigClassifier),
+    DefaultRegex = kz_json:get_ne_binary_value(<<"regex">>, ConfigClassifier),
     DefaultEmergency = kz_json:is_true(<<"emergency">>, ConfigClassifier, 'undefined'),
     Props =
         props:filter_undefined(
           [{<<"_id">>, <<(kz_doc:id(ResourceJObj))/binary, "-", Classifier/binary>>}
           ,{<<"name">>, <<(kzd_resources:name(ResourceJObj))/binary, " - ", Classifier/binary>>}
-          ,{<<"rules">>, [kz_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
-          ,{<<"weight_cost">>, kz_json:get_value(<<"weight_cost">>, ClassifierJObj)}
+          ,{<<"rules">>, [kz_json:get_ne_binary_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
+          ,{<<"weight_cost">>, kz_json:get_integer_value(<<"weight_cost">>, ClassifierJObj)}
           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
           ,{<<"classifier">>, Classifier}
           ,{<<"classifier_enable">>, kz_json:is_true(<<"enabled">>, ClassifierJObj, 'true')}
@@ -1080,8 +1080,8 @@ create_classifier_resource(ResourceJObj, ClassifierJObj, Classifier, ConfigClass
 create_classifier_gateways(ResourceJObj, ClassifierJObj) ->
     Props =
         props:filter_undefined(
-          [{<<"suffix">>, kz_json:get_value(<<"suffix">>, ClassifierJObj)}
-          ,{<<"prefix">>, kz_json:get_value(<<"prefix">>, ClassifierJObj)}
+          [{<<"suffix">>, kz_json:get_ne_binary_value(<<"suffix">>, ClassifierJObj)}
+          ,{<<"prefix">>, kz_json:get_ne_binary_value(<<"prefix">>, ClassifierJObj)}
           ]
          ),
     Gateways =
@@ -1181,9 +1181,10 @@ resource_rules([Rule|Rules], CompiledRules) ->
 
 -spec resource_rules_test(kz_json:object()) -> rules().
 resource_rules_test(JObj) ->
-    Rules = kz_json:get_value(<<"rules_test">>, JObj, []),
+    Rules = kz_json:get_list_value(<<"rules_test">>, JObj, []),
     lager:info("compiling resource test rules for ~s / ~s: ~p"
-              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj), Rules]),
+              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj), Rules]
+              ),
     resource_rules(Rules, []).
 
 -spec resource_cid_rules(kz_json:object()) -> rules().
@@ -1196,17 +1197,11 @@ resource_cid_rules(ResourceJObj) ->
 
 -spec resource_grace_period(kzd_resources:doc() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
-    resource_grace_period(kzd_resources:grace_period(JObj, ?DEFAULT_WEIGHT));
-resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod > 100 -> 100;
-resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod < 0 -> 0;
-resource_grace_period(GracePeriod) when is_integer(GracePeriod) -> GracePeriod.
+    kz_math:clamp(100, 0, kzd_resources:grace_period(JObj, ?DEFAULT_WEIGHT)).
 
--spec resource_weight(kzd_resources:doc() | integer()) -> integer().
+-spec resource_weight(kzd_resources:doc() | integer()) -> 1..100.
 resource_weight(JObj) when not is_integer(JObj) ->
-    resource_weight(kzd_resources:weight_cost(JObj, ?DEFAULT_WEIGHT));
-resource_weight(W) when W > 100 -> 100;
-resource_weight(W) when W < 1 -> 1;
-resource_weight(W) -> W.
+    kz_math:clamp(100, 1, kzd_resources:weight_cost(JObj, ?DEFAULT_WEIGHT)).
 
 -spec resource_is_emergency(kz_json:object()) -> boolean().
 resource_is_emergency(JObj) ->
@@ -1251,19 +1246,19 @@ gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
     #gateway{endpoint_type = EndpointType
             ,server = kz_json:get_ne_binary_value(<<"server">>, GatewayJObj)
             ,port = kz_json:get_integer_value(<<"port">>, GatewayJObj)
-            ,realm = kz_json:get_value(<<"realm">>, GatewayJObj)
-            ,username = kz_json:get_value(<<"username">>, GatewayJObj)
-            ,password = kz_json:get_value(<<"password">>, GatewayJObj)
+            ,realm = kz_json:get_ne_binary_value(<<"realm">>, GatewayJObj)
+            ,username = kz_json:get_ne_binary_value(<<"username">>, GatewayJObj)
+            ,password = kz_json:get_ne_binary_value(<<"password">>, GatewayJObj)
             ,ccvs = gateway_ccvs(GatewayJObj)
             ,sip_headers = kz_custom_sip_headers:outbound(kz_json:get_json_value(<<"custom_sip_headers">>, GatewayJObj, kz_json:new()))
             ,sip_interface = kz_json:get_ne_value(<<"custom_sip_interface">>, GatewayJObj)
-            ,invite_format = kz_json:get_value(<<"invite_format">>, GatewayJObj, <<"route">>)
+            ,invite_format = kz_json:get_ne_binary_value(<<"invite_format">>, GatewayJObj, <<"route">>)
             ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, GatewayJObj, FormatFrom)
             ,from_uri_realm = kz_json:get_ne_value(<<"from_uri_realm">>, GatewayJObj, FromRealm)
             ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, GatewayJObj, FromAccountRealm)
             ,is_emergency = gateway_is_emergency(GatewayJObj, IsEmergency)
             ,fax_option = kz_json:is_true([<<"media">>, <<"fax_option">>], GatewayJObj, T38)
-            ,codecs = kz_json:get_value(<<"codecs">>, GatewayJObj, Codecs)
+            ,codecs = kz_json:get_list_value(<<"codecs">>, GatewayJObj, Codecs)
             ,bypass_media = kz_json:is_true(<<"bypass_media">>, GatewayJObj, BypassMedia)
             ,force_port = kz_json:is_true(<<"force_port">>, GatewayJObj)
             ,route = kz_json:get_ne_value(<<"route">>, GatewayJObj, ?DEFAULT_ROUTE)
@@ -1292,17 +1287,17 @@ gateway_is_emergency(JObj, IsEmergency) ->
 -spec endpoint_options(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
 endpoint_options(JObj, <<"freetdm">>) ->
     kz_json:from_list(
-      [{<<"Span">>, kz_json:get_value(<<"span">>, JObj)}
-      ,{<<"Channel-Selection">>, kz_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
+      [{<<"Span">>, kz_json:get_ne_binary_value(<<"span">>, JObj)}
+      ,{<<"Channel-Selection">>, kz_json:get_ne_binary_value(<<"channel_selection">>, JObj, <<"ascending">>)}
       ]);
 endpoint_options(JObj, <<"skype">>) ->
     kz_json:from_list(
-      [{<<"Skype-Interface">>, kz_json:get_value(<<"interface">>, JObj)}
-      ,{<<"Skype-RR">>, kz_json:is_true(<<"skype_rr">>, JObj, true)}
+      [{<<"Skype-Interface">>, kz_json:get_ne_binary_value(<<"interface">>, JObj)}
+      ,{<<"Skype-RR">>, kz_json:is_true(<<"skype_rr">>, JObj, 'true')}
       ]);
 endpoint_options(JObj, <<"sip">>) ->
     kz_json:from_list(
-      [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}]);
+      [{<<"Route-ID">>, kz_json:get_ne_binary_value(<<"route_id">>, JObj)}]);
 endpoint_options(_, _) ->
     kz_json:new().
 
@@ -1316,7 +1311,9 @@ gateway_dialstring(#gateway{route='undefined'
                            ,suffix=Suffix
                            ,server=Server
                            ,port=Port
-                           }, Number) ->
+                           }
+                  ,Number
+                  ) ->
     DialStringPort =
         case not kz_term:is_empty(Port)
             andalso Port =/= 5060
