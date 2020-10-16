@@ -159,7 +159,7 @@ correct_shortdial(Number, CIDNum, DeniedCallRestrictions, {'true', _Length}) ->
                                           )
     end;
 correct_shortdial(Number, _CIDNum, _DeniedCallRestrictions, {'false', Length}) ->
-    lager:debug("~s's lenght (~p) doesn't match min_shortdial_destination param's value (~p), skipping"
+    lager:debug("~s's length (~p) doesn't match min_shortdial_destination param's value (~p), skipping"
                ,[Number, byte_size(Number), Length]
                ),
     'undefined'.
