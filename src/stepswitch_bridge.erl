@@ -194,7 +194,7 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_call_event:doc(), state()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_call_event:payload(), state()) -> gen_listener:handle_event_return().
 handle_event(CallEvt, #state{request_handler=RequestHandler
                             ,resource_req=OffnetReq
                             ,call_id=CallId
@@ -216,18 +216,18 @@ handle_event(CallEvt, #state{request_handler=RequestHandler
     end,
     {'reply', []}.
 
--spec handle_channel_bridge(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+-spec handle_channel_bridge(kz_call_event:payload(), kz_term:api_pid()) -> 'ok'.
 handle_channel_bridge(CallEvt, RequestHandler) ->
     OtherLeg = kz_call_event:other_leg_call_id(CallEvt),
     gen_listener:cast(RequestHandler, {'bridged', OtherLeg}).
 
--spec handle_channel_transferor(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+-spec handle_channel_transferor(kz_call_event:payload(), kz_term:api_pid()) -> 'ok'.
 handle_channel_transferor(CallEvt, RequestHandler) ->
     Transferor = kz_call_event:other_leg_call_id(CallEvt),
     lager:info("channel_transferor to ~s", [Transferor]),
     follow_call_id(RequestHandler, Transferor).
 
--spec handle_channel_replaced(kz_call_event:doc(), kz_term:api_pid()) -> 'ok'.
+-spec handle_channel_replaced(kz_call_event:payload(), kz_term:api_pid()) -> 'ok'.
 handle_channel_replaced(CallEvt, RequestHandler) ->
     ReplacedBy = kz_call_event:replaced_by(CallEvt),
     lager:info("channel_replaced to ~s", [ReplacedBy]),
@@ -238,7 +238,7 @@ follow_call_id(RequestHandler, CallId) ->
     gen_listener:cast(RequestHandler, {'replaced', CallId}),
     gen_listener:add_binding(RequestHandler, ?CALL_BINDING(CallId)).
 
--spec handle_error_event(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+-spec handle_error_event(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_error_event(CallEvt, OffnetReq, RequestHandler) ->
     handle_error_event(CallEvt
                       ,OffnetReq
@@ -246,7 +246,7 @@ handle_error_event(CallEvt, OffnetReq, RequestHandler) ->
                       ,kapi_dialplan:application_name(kz_call_event:request(CallEvt))
                       ).
 
--spec handle_error_event(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:ne_binary()) -> 'ok'.
+-spec handle_error_event(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:ne_binary()) -> 'ok'.
 handle_error_event(CallEvt, OffnetReq, RequestHandler, <<"bridge">>) ->
     lager:info("channel execution error while waiting for bridge: ~s"
               ,[kz_term:to_binary(kz_json:encode(CallEvt))]
@@ -255,12 +255,12 @@ handle_error_event(CallEvt, OffnetReq, RequestHandler, <<"bridge">>) ->
 handle_error_event(_CallEvt, _OffnetReq, _RequestHandler, _EvtName) ->
     lager:debug("ignoring execution error of ~s", [_EvtName]).
 
--spec handle_channel_destroy(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+-spec handle_channel_destroy(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_channel_destroy(CallEvt, OffnetReq, RequestHandler) ->
     lager:debug("channel was destroyed while waiting for bridge"),
     handle_bridge_result(CallEvt, OffnetReq, RequestHandler).
 
--spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+-spec handle_channel_execute_complete(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler) ->
     handle_channel_execute_complete(CallEvt
                                    ,OffnetReq
@@ -268,14 +268,14 @@ handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler) ->
                                    ,kz_call_event:application_name(CallEvt)
                                    ).
 
--spec handle_channel_execute_complete(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:api_ne_binary()) -> 'ok'.
+-spec handle_channel_execute_complete(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid(), kz_term:api_ne_binary()) -> 'ok'.
 handle_channel_execute_complete(CallEvt, OffnetReq, RequestHandler, <<"bridge">>) ->
     lager:debug("channel execute complete for bridge"),
     handle_bridge_result(CallEvt, OffnetReq, RequestHandler);
 handle_channel_execute_complete(_CallEvt, _OffnetReq, _RequestHander, _AppName) ->
     lager:debug("ignoring channel_execute_complete for application ~s", [_AppName]).
 
--spec handle_bridge_result(kz_call_event:doc(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
+-spec handle_bridge_result(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_bridge_result(CallEvt, OffnetReq, RequestHandler) ->
     Result = case <<"SUCCESS">> =:= kz_call_event:disposition(CallEvt) of
                  'true' -> bridge_success(CallEvt, OffnetReq);
@@ -602,7 +602,7 @@ bridge_timeout(OffnetReq) ->
     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_error(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+-spec bridge_error(kz_call_event:payload(), kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_error(CallEvt, OffnetReq) ->
     lager:debug("error during outbound request: ~s", [kz_json:encode(CallEvt)]),
 
@@ -615,7 +615,7 @@ bridge_error(CallEvt, OffnetReq) ->
     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_success(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+-spec bridge_success(kz_call_event:payload(), kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_success(CallEvt, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -626,7 +626,7 @@ bridge_success(CallEvt, OffnetReq) ->
     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_failure(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
+-spec bridge_failure(kz_call_event:payload(), kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_failure(CallEvt, OffnetReq) ->
     lager:debug("resources for outbound request failed: ~s"
                ,[kz_call_event:disposition(CallEvt)]
@@ -639,7 +639,7 @@ bridge_failure(CallEvt, OffnetReq) ->
     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec response_message(kz_call_event:doc()) -> kz_term:api_ne_binary().
+-spec response_message(kz_call_event:payload()) -> kz_term:api_ne_binary().
 response_message(CallEvt) ->
     case kz_call_event:application_response(CallEvt) of
         'undefined' -> kz_call_event:hangup_cause(CallEvt);
@@ -803,7 +803,7 @@ set_emergency_user_meta(OffnetReq, Props) ->
         {'error', _} -> Props
     end.
 
--spec get_event_type(kz_call_event:doc()) ->
+-spec get_event_type(kz_call_event:payload()) ->
           {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(CallEvt) ->
     {Cat, Name} = kz_api:event_type(CallEvt),
