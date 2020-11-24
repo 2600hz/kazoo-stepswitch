@@ -491,19 +491,9 @@ maybe_override_asserted_identity(OffnetReq, {'true', Number, Name}) ->
           kz_term:api_binary().
 bridge_from_uri(Number, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
-
-    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse kapi_offnet_resource:format_from_uri(OffnetReq)
-         )
-        andalso is_binary(Number)
-        andalso is_binary(Realm)
-    of
-        'false' -> 'undefined';
-        'true' ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
-            lager:debug("setting bridge from-uri to ~s", [FromURI]),
-            FromURI
-    end.
+    FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
+    lager:debug("setting bridge from-uri to ~s", [FromURI]),
+    FromURI.
 
 -spec bridge_outbound_cid_name(kapi_offnet_resource:req()) -> kz_term:api_binary().
 bridge_outbound_cid_name(OffnetReq) ->
