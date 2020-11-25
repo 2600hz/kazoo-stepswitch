@@ -274,21 +274,10 @@ build_originate(#state{endpoints=Endpoints
 
 -spec originate_from_uri(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 originate_from_uri(CIDNum, OffnetReq) ->
-    Realm = kz_json:get_first_defined([<<"From-URI-Realm">>
-                                      ,<<"Account-Realm">>
-                                      ], OffnetReq),
-    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse kz_json:is_true(<<"Format-From-URI">>, OffnetReq))
-        andalso (is_binary(CIDNum)
-                 andalso is_binary(Realm)
-                )
-    of
-        'false' -> 'undefined';
-        'true' ->
-            FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
-            lager:debug("setting bridge from-uri to ~s", [FromURI]),
-            FromURI
-    end.
+    Realm = stepswitch_util:default_realm(OffnetReq),
+    FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
+    lager:debug("setting bridge from-uri to ~s", [FromURI]),
+    FromURI.
 
 -spec originate_caller_id(kz_json:object()) -> {kz_term:api_binary(), kz_term:api_binary()}.
 originate_caller_id(OffnetReq) ->
