@@ -222,6 +222,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"Route">>, Number}
       ,{<<"To-DID">>, Number}
       ,{<<"To-Realm">>, TargetRealm}
+      ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ]).
 %%------------------------------------------------------------------------------
 %% @doc
