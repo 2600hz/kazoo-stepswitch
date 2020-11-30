@@ -370,6 +370,7 @@ build_local_extension(#state{number_props=Props
 
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
       ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
+      ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
 
       ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
       ,{<<"Caller-ID-Name">>, CIDName}
