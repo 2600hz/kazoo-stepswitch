@@ -738,8 +738,8 @@ gateway_to_endpoint(DestinationNumber
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
-        ,{<<"Outbound-Callee-ID-Name">>, kz_term:to_binary(DestinationNumber)}
-        ,{<<"Outbound-Callee-ID-Number">>, kz_term:to_binary(DestinationNumber)}
+        ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetJObj, kz_term:to_binary(DestinationNumber))}
+        ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetJObj, kz_term:to_binary(DestinationNumber))}
         ,{<<"To-DID">>, kz_term:to_binary(DestinationNumber)}
         ,{<<"Invite-Format">>, InviteFormat}
         ,{<<"Caller-ID-Type">>, CallerIdType}
