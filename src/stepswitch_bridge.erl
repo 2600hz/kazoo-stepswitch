@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2020, 2600Hz
+%%% @copyright (C) 2013-2021, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -418,7 +418,8 @@ build_bridge(#state{endpoints=Endpoints
     IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, ReqCCVs, 'false')
         orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
 
-    FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs),
+    DefaultFailOnSingleReject = kapi_offnet_resource:fail_on_single_reject(OffnetReq, ?DEFAULT_FAIL_ON_SINGLE_REJECT(AccountId)),
+    FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs, DefaultFailOnSingleReject),
 
     AddCCVs = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
                                      ,{<<"Account-ID">>, AccountId}
