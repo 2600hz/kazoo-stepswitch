@@ -36,5 +36,13 @@
         kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>)
        ).
 
+-define(DEFAULT_FAIL_ON_SINGLE_REJECT_REASONS, [<<"USER_BUSY">>
+                                               ,<<"CALL_REJECTED">>
+                                               ,<<"NO_ANSWER">>
+                                               ]).
+-define(FAIL_ON_SINGLE_REJECT_KEY, <<"default_fail_on_single_reject">>).
+
+-define(DEFAULT_FAIL_ON_SINGLE_REJECT(A), kapps_account_config:get_global(A, ?SS_CONFIG_CAT, ?FAIL_ON_SINGLE_REJECT_KEY, ?DEFAULT_FAIL_ON_SINGLE_REJECT_REASONS)).
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.

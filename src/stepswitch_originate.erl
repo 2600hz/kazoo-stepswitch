@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2020, 2600Hz
+%%% @copyright (C) 2013-2021, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -239,6 +239,8 @@ build_originate(#state{endpoints=Endpoints
 
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, CIDName, CIDNum, OffnetReq),
 
+    FailOnSingleReject = kapi_offnet_resource:fail_on_single_reject(OffnetReq, ?DEFAULT_FAIL_ON_SINGLE_REJECT(AccountId)),
+
     props:filter_undefined(
       [{<<"Application-Data">>, kz_json:get_value(<<"Application-Data">>, OffnetReq)}
       ,{<<"Application-Name">>, Application}
@@ -270,6 +272,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
+      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
