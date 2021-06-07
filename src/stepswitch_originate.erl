@@ -365,5 +365,5 @@ originate_started(JObj, OffnetReq) ->
     ,{<<"Control-Queue">>, kz_json:get_value(<<"Control-Queue">>, JObj)}
     ,{<<"Response-Message">>, <<"READY">>}
     ,{<<"Resource-Response">>, JObj}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
