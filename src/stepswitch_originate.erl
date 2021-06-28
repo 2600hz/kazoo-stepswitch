@@ -236,6 +236,8 @@ build_originate(#state{endpoints=Endpoints
                    ,{<<"From-URI">>, originate_from_uri(CIDNum, OffnetReq)}
                    ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                    ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
+                   ,{<<"Authorizing-ID">>, AccountId}
+                   ,{<<"Authorizing-Type">>, <<"account">>}
                    ]),
     Application = kz_json:get_value(<<"Application-Name">>, OffnetReq, <<"park">>),
 
