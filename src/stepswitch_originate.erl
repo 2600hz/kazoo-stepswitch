@@ -179,6 +179,8 @@ handle_event(JObj, #state{request_handler=RequestHandler
                 'false' ->
                     gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, OffnetReq)})
             end;
+        {<<"resource">>, <<"originate_started">>} ->
+            gen_listener:cast(RequestHandler, {'originate_result', originate_started(JObj, OffnetReq)});
         {<<"error">>, <<"originate_resp">>} ->
             MsgId = kz_api:msg_id(JObj),
             lager:debug("channel execution error while waiting for originate: ~s"
@@ -234,6 +236,8 @@ build_originate(#state{endpoints=Endpoints
                    ,{<<"From-URI">>, originate_from_uri(CIDNum, OffnetReq)}
                    ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                    ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
+                   ,{<<"Authorizing-ID">>, AccountId}
+                   ,{<<"Authorizing-Type">>, <<"account">>}
                    ]),
     Application = kz_json:get_value(<<"Application-Name">>, OffnetReq, <<"park">>),
 
@@ -320,11 +324,14 @@ originate_error(JObj, OffnetReq) ->
 -spec originate_success(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 originate_success(JObj, OffnetReq) ->
     lager:debug("originate request successfully completed"),
-    [{<<"Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
-    ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
+    ResourceResponse =
+        kz_json:set_value(<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj), kz_api:remove_defaults(JObj)),
+    [{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
+    ,{<<"Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
+    ,{<<"Call">>, kapps_call:to_json(kapps_call:from_originate_resp(JObj))}
+    ,{<<"Resource-Response">>, ResourceResponse}
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
-    ,{<<"Resource-Response">>, JObj}
     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -345,6 +352,17 @@ originate_failure(JObj, OffnetReq) ->
 originate_ready(JObj, OffnetReq) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, JObj)}
+    ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
+    ,{<<"Control-Queue">>, kz_json:get_value(<<"Control-Queue">>, JObj)}
+    ,{<<"Response-Message">>, <<"READY">>}
+    ,{<<"Resource-Response">>, JObj}
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+-spec originate_started(kz_json:object(), kz_json:object()) -> kz_term:proplist().
+originate_started(JObj, OffnetReq) ->
+    lager:debug("originate started to execute"),
+    [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
     ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
     ,{<<"Control-Queue">>, kz_json:get_value(<<"Control-Queue">>, JObj)}
     ,{<<"Response-Message">>, <<"READY">>}
