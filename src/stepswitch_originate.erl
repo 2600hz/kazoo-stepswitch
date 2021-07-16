@@ -236,8 +236,7 @@ build_originate(#state{endpoints=Endpoints
                    ,{<<"From-URI">>, originate_from_uri(CIDNum, OffnetReq)}
                    ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                    ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                   ,{<<"Authorizing-ID">>, AccountId}
-                   ,{<<"Authorizing-Type">>, <<"account">>}
+                   ,{fun maybe_add_authorizing_id/2, AccountId}
                    ]),
     Application = kz_json:get_value(<<"Application-Name">>, OffnetReq, <<"park">>),
 
@@ -279,6 +278,25 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec maybe_add_authorizing_id(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+maybe_add_authorizing_id(JObj, AccountId) ->
+    AuthorizingId = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, JObj),
+    AuthorizingType = kz_json:get_ne_binary_value(<<"Authorizing-Type">>, JObj),
+    maybe_add_authorizing_id(JObj, AccountId, AuthorizingId, AuthorizingType).
+
+-spec maybe_add_authorizing_id(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
+maybe_add_authorizing_id(JObj, AccountId, undefined, undefined) ->
+    KVs = [{<<"Authorizing-ID">>, AccountId}
+          ,{<<"Authorizing-Type">>, <<"account">>}
+          ],
+    kz_json:set_values(KVs, JObj);
+maybe_add_authorizing_id(JObj, AccountId, AccountId, undefined) ->
+    kz_json:set_value(<<"Authorizing-Type">>, <<"account">>, JObj);
+maybe_add_authorizing_id(JObj, AccountId, undefined, <<"account">>) ->
+    kz_json:set_value(<<"Authorizing-ID">>, AccountId, JObj);
+maybe_add_authorizing_id(JObj, _AccountId, _AuthorizingId, _AuthorizingType) ->
+    JObj.
 
 -spec originate_from_uri(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 originate_from_uri(CIDNum, OffnetReq) ->
