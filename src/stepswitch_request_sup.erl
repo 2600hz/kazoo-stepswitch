@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2020, 2600Hz
+%%% @copyright (C) 2013-2021, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -38,13 +38,13 @@ start_link() ->
 
 -spec child_name(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 child_name(OffnetReq) ->
-    list_to_binary([kapi_offnet_resource:call_id(OffnetReq)
+    list_to_binary([kapi_offnet_resource:call_id(OffnetReq, kz_api:msg_id(OffnetReq))
                    ,"-", kz_binary:rand_hex(3)
                    ]).
 
 -spec outbound_child_name(kapi_offnet_resource:req()) -> kz_term:ne_binary().
 outbound_child_name(OffnetReq) ->
-    list_to_binary([kapi_offnet_resource:outbound_call_id(OffnetReq)
+    list_to_binary([kapi_offnet_resource:outbound_call_id(OffnetReq, kz_api:msg_id(OffnetReq))
                    ,"-", kz_binary:rand_hex(3)
                    ]).
 
