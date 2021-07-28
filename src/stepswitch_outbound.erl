@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2021, 2600Hz
 %%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -62,7 +62,7 @@ handle_originate_req(OffnetReq) ->
     lager:debug("received outbound audio resource request for ~s from account ~s"
                ,[Number, kapi_offnet_resource:account_id(OffnetReq)]
                ),
-    handle_originate_req(Number, maybe_add_call_id(kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq) , OffnetReq)).
+    handle_originate_req(Number, OffnetReq).
 
 -spec handle_originate_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_originate_req(Number, OffnetReq) ->
@@ -71,11 +71,6 @@ handle_originate_req(Number, OffnetReq) ->
             maybe_force_originate_outbound(Props, OffnetReq);
         _ -> maybe_originate(Number, OffnetReq)
     end.
-
--spec maybe_add_call_id(kz_term:api_binary(), kapi_offnet_resource:req()) -> kz_json:object().
-maybe_add_call_id('undefined', OffnetReq) ->
-    kz_json:set_value(<<"Outbound-Call-ID">>, kz_binary:rand_hex(8), OffnetReq);
-maybe_add_call_id(_, OffnetReq) -> OffnetReq.
 
 -spec maybe_force_originate_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_originate_outbound(Props, OffnetReq) ->
