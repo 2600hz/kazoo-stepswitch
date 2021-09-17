@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2021, 2600Hz
+%%% @copyright (C) 2013-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -466,6 +466,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
+      ,{<<"SIP-Invite-Contact-User">>, Number}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)

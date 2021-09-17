@@ -166,6 +166,9 @@
                ,classifier = 'undefined' :: kz_term:api_binary()
                ,classifier_enable = 'true' :: boolean()
                ,gateway_strategy = 'sequential' :: gateway_strategy()
+               ,ccvs :: kz_term:api_object()
+               ,sip_headers :: kz_term:api_object()
+               ,sip_interface :: kz_term:api_binary()
                }).
 
 -type gateway_strategy() :: 'sequential' | 'random'.
@@ -1135,6 +1138,9 @@ resource_from_jobj(JObj) ->
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
                      ,gateway_strategy=kz_term:to_atom(kzd_resources:gateway_strategy(JObj, <<"sequential">>), 'true')
+                     ,ccvs = kzd_resources:ccvs(JObj, kz_json:new())
+                     ,sip_headers = kzd_resources:cshs(JObj, kz_json:new())
+                     ,sip_interface = kzd_resources:custom_sip_interface(JObj)
                      },
     Gateways = gateways_from_jobjs(kzd_resources:gateways(JObj, []), Resource),
     Resource#resrc{gateways=Gateways}.
@@ -1241,6 +1247,9 @@ gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
                                      ,privacy_method=PrivacyMethod
                                      ,privacy_hide_name=HideName
                                      ,privacy_hide_number=HideNumber
+                                     ,sip_headers=CustomSIPHeaders
+                                     ,ccvs=CCVs
+                                     ,sip_interface=SIPInterface
                                      }) ->
     EndpointType = kz_json:get_ne_value(<<"endpoint_type">>, GatewayJObj, <<"sip">>),
     #gateway{endpoint_type = EndpointType
@@ -1249,9 +1258,9 @@ gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
             ,realm = kz_json:get_ne_binary_value(<<"realm">>, GatewayJObj)
             ,username = kz_json:get_ne_binary_value(<<"username">>, GatewayJObj)
             ,password = kz_json:get_ne_binary_value(<<"password">>, GatewayJObj)
-            ,ccvs = gateway_ccvs(GatewayJObj)
-            ,sip_headers = kz_custom_sip_headers:outbound(kz_json:get_json_value(<<"custom_sip_headers">>, GatewayJObj, kz_json:new()))
-            ,sip_interface = kz_json:get_ne_value(<<"custom_sip_interface">>, GatewayJObj)
+            ,ccvs = gateway_ccvs(GatewayJObj, CCVs)
+            ,sip_headers = gateway_sip_headers(GatewayJObj, CustomSIPHeaders)
+            ,sip_interface = kzd_resources:custom_sip_interface(GatewayJObj, SIPInterface)
             ,invite_format = kz_json:get_ne_binary_value(<<"invite_format">>, GatewayJObj, <<"route">>)
             ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, GatewayJObj, FormatFrom)
             ,from_uri_realm = kz_json:get_ne_value(<<"from_uri_realm">>, GatewayJObj, FromRealm)
@@ -1274,10 +1283,13 @@ gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
             ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, GatewayJObj)
             }.
 
--spec gateway_ccvs(kz_json:object()) -> kz_json:object().
-gateway_ccvs(JObj) ->
-    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, JObj, kz_json:new()),
-    kz_custom_sip_headers:outbound(CCVs, kz_json:new()).
+-spec gateway_ccvs(kz_json:object(), kz_json:object()) -> kz_json:object().
+gateway_ccvs(GatewayJObj, ResourceCCVs) ->
+    kz_custom_channel_vars:outbound(kz_json:merge(ResourceCCVs, kzd_resources:ccvs(GatewayJObj, kz_json:new())), kz_json:new()).
+
+-spec gateway_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
+gateway_sip_headers(GatewayJObj, ResourceSIPHeaders) ->
+    kz_custom_sip_headers:outbound(kz_json:merge(ResourceSIPHeaders, kzd_resources:cshs(GatewayJObj, kz_json:new())), kz_json:new()).
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
 gateway_is_emergency(_, 'true') -> 'true';
