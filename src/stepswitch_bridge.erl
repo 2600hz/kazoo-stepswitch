@@ -466,6 +466,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
+      ,{<<"SIP-Invite-Contact-User">>, Number}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
