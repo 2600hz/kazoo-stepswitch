@@ -277,7 +277,7 @@ handle_channel_execute_complete(_CallEvt, _OffnetReq, _RequestHander, _AppName) 
 
 -spec handle_bridge_result(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_bridge_result(CallEvt, OffnetReq, RequestHandler) ->
-    Result = case <<"SUCCESS">> =:= kz_call_event:disposition(CallEvt) of
+    Result = case <<"NORMAL_CLEARING">> =:= kz_call_event:application_response(CallEvt) of
                  'true' -> bridge_success(CallEvt, OffnetReq);
                  'false' -> bridge_failure(CallEvt, OffnetReq)
              end,
