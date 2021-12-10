@@ -231,7 +231,7 @@ handle_channel_destroy(CallEvt, OffnetReq, RequestHandler) ->
 -spec handle_bridge_result(kz_call_event:payload(), kapi_offnet_resource:req(), kz_term:api_pid()) -> 'ok'.
 handle_bridge_result(CallEvt, OffnetReq, RequestHandler) ->
     lager:debug("channel was destroyed while waiting for bridge"),
-    Result = case <<"SUCCESS">> =:= kz_call_event:disposition(CallEvt) of
+    Result = case <<"NORMAL_CLEARING">> =:= kz_call_event:application_response(CallEvt) of
                  'true' -> local_extension_success(OffnetReq);
                  'false' -> local_extension_failure(CallEvt, OffnetReq)
              end,
