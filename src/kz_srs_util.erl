@@ -65,7 +65,7 @@ get_value('cid_number', _Resources, _Number, OffnetJObj, _DB, _Default) ->
     end;
 get_value('service_plans', _Resources, _Number, OffnetJObj, _DB, _Default) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
-    JObj = kz_services:public_json(AccountId),
+    JObj = kz_services:public_json(kz_services:fetch(AccountId)),
     PlansJObj = kz_json:get_json_value(<<"plans">>, JObj, kz_json:new()),
     kz_json:foldl(fun get_value_fold/3, [], PlansJObj);
 get_value({'request', Field}, _Resources, _Number, OffnetJObj, _DB, Default) ->
