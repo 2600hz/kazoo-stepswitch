@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2020, 2600Hz
+%%% @copyright (C) 2013-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1153,8 +1153,8 @@ resource_formatters(JObj) ->
 resource_codecs(JObj) ->
     DefaultAudio = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_audio_codecs">>, []),
     DefaultVideo = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_video_codecs">>, []),
-    case kzd_resources:media_audio_codecs(JObj, DefaultAudio)
-        ++ kzd_resources:media_video_codecs(JObj, DefaultVideo)
+    case kz_codecs:audio_codecs(JObj, DefaultAudio)
+        ++ kz_codecs:video_codecs(JObj, DefaultVideo)
     of
         [] -> kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_codecs">>, []);
         Codecs -> Codecs
