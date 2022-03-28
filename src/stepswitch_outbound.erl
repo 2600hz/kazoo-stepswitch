@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -200,6 +200,12 @@ create_loopback_endpoint(Props, OffnetReq) ->
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", TargetRealm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", TargetRealm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, TargetRealm}
+
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-Token">>, <<OriginalAccountId/binary, "@", TargetAccountId/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, TargetRealm}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
+
              ]),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
     kz_json:from_list(
