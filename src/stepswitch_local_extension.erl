@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2020, 2600Hz
+%%% @copyright (C) 2013-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -342,6 +342,12 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", Realm/binary>>}
+
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-Token">>, <<OriginalAccountId/binary, "@", AccountId/binary>>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
+
                    ]),
 
     Endpoint = kz_json:from_list(
