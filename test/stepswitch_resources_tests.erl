@@ -60,7 +60,13 @@ invite_parameters_test_() ->
      || {ExpectedValue, Gateway, ModifiedOffnet} <- Zipped].
 
 validate(Schema, Object) ->
-    kz_json_schema:validate(Schema
-                           ,Object
-                           ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
-                           ).
+    case kz_json_schema:validate(Schema
+                                ,Object
+                                ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
+                                )
+    of
+        {'ok', Valid} -> {'ok', Valid};
+        Error ->
+            ?debugFmt("object ~s failed~n~p~n", [kz_json:encode(Object), Error]),
+            Error
+    end.

@@ -78,7 +78,7 @@
                 "progress_timeout": 8,
                 "realm": "carrier.2600hz.local",
                 "route": "+14158867900@2600hz.local",
-                "server": "127.0.0.1",
+                "server": "10.0.0.1",
                 "suffix": "#9999",
                 "username": "gateway001resource001username"
             }
