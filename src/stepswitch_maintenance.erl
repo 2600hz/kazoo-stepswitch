@@ -26,6 +26,8 @@
 
 -include("stepswitch.hrl").
 
+-elvis([{elvis_style, no_debug_call, disable}]).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end

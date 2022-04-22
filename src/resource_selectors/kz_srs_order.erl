@@ -54,7 +54,7 @@ default_weight(<<"descend">>) -> ?DEFAULT_DESC_WEIGHT.
 -spec check_source(tuple() | any()) -> 'ok'.
 check_source({'database', _}) -> 'ok';
 check_source({'resource', _}) -> 'ok';
-check_source(Source) -> throw({invalid_source, Source}).
+check_source(Source) -> throw({'invalid_source', Source}).
 
 -spec sort(integer(), integer(), kz_term:ne_binary()) -> boolean().
 sort(Lesser, Greater, <<"ascend">>) -> Lesser =< Greater;
