@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Account document
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -11,7 +11,7 @@
 -module(stepswitch_resources_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("src/stepswitch.hrl").
+-include("stepswitch.hrl").
 
 -define(RESOURCE_1_ID, <<"resource000000000000000000000001">>).
 
