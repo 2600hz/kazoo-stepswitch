@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Account document
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -11,7 +11,7 @@
 -module(stepswitch_resources_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("src/stepswitch.hrl").
+-include("stepswitch.hrl").
 
 -define(RESOURCE_1_ID, <<"resource000000000000000000000001">>).
 
@@ -60,7 +60,13 @@ invite_parameters_test_() ->
      || {ExpectedValue, Gateway, ModifiedOffnet} <- Zipped].
 
 validate(Schema, Object) ->
-    kz_json_schema:validate(Schema
-                           ,Object
-                           ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
-                           ).
+    case kz_json_schema:validate(Schema
+                                ,Object
+                                ,[{'schema_loader_fun', fun kz_json_schema:fload/1}]
+                                )
+    of
+        {'ok', Valid} -> {'ok', Valid};
+        Error ->
+            ?debugFmt("object ~s failed~n~p~n", [kz_json:encode(Object), Error]),
+            Error
+    end.

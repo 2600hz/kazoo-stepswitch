@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,7 +24,7 @@ select_filter_action(Params) ->
     do_select_filter_action(kz_json:get_ne_binary_value(<<"action">>, Params)).
 do_select_filter_action(<<"keep">>) -> 'keep';
 do_select_filter_action(<<"drop">>) -> 'drop';
-do_select_filter_action(Data) -> throw({invalid_filter_action, Data}).
+do_select_filter_action(Data) -> throw({'invalid_filter_action', Data}).
 
 -spec select_filter_mode(kz_json:object(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
 select_filter_mode(Params, ModesList, Default) ->
@@ -32,7 +32,7 @@ select_filter_mode(Params, ModesList, Default) ->
 do_select_filter_mode(Mode, ModesList) ->
     case lists:member(Mode, ModesList) of
         'true' -> Mode;
-        'false' -> throw({invalid_filter_mode, Mode})
+        'false' -> throw({'invalid_filter_mode', Mode})
     end.
 
 -type source() :: 'number' |
@@ -49,7 +49,7 @@ get_source(<<"service_plans">>) -> 'service_plans';
 get_source(<<"request:", Field/binary>>) -> {'request', Field};
 get_source(<<"resource:", Field/binary>>) -> {'resource', Field};
 get_source(<<"database:", Selector/binary>>) -> {'database', Selector};
-get_source(Type) -> throw({invalid_filter_type, Type}).
+get_source(Type) -> throw({'invalid_filter_type', Type}).
 
 -spec get_value(source(), any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
 get_value(Type, Resources, Number, OffnetJObj, DB) ->
@@ -105,7 +105,7 @@ get_value_fold(PlanId, JObj, Acc) ->
 
 get_data_from_resource(ResourceField, Resource) ->
     case props:get_value(ResourceField, ?ALLOWED_RESOURCE_FIELDS) of
-        'undefined' -> throw({forbidden_resource_field, ResourceField});
+        'undefined' -> throw({'forbidden_resource_field', ResourceField});
         Field -> stepswitch_resources:Field(Resource)
     end.
 
@@ -113,7 +113,7 @@ get_data_from_resource(ResourceField, Resource) ->
 check_value(Fun, Value) ->
     case Fun(Value) of
         'true' -> 'ok';
-        'false' -> throw({invalid_value_type, Value})
+        'false' -> throw({'invalid_value_type', Value})
     end.
 
 filter_by_start_stop(Now, Row, Acc, Default) ->
@@ -123,8 +123,7 @@ filter_by_start_stop(Now, Row, Acc, Default) ->
 
 filter_by_start_stop(Now, Start, Stop, Row, Acc, Default) ->
     case Start =< Now
-        andalso
-        Stop >= Now
+        andalso Stop >= Now
     of
         'true' ->
             ID = kz_json:get_ne_value([<<"value">>, <<"resource">>], Row),

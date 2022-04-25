@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2021, 2600Hz
+%%% @copyright (C) 2013-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -286,14 +286,14 @@ maybe_add_authorizing_id(JObj, AccountId) ->
     maybe_add_authorizing_id(JObj, AccountId, AuthorizingId, AuthorizingType).
 
 -spec maybe_add_authorizing_id(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
-maybe_add_authorizing_id(JObj, AccountId, undefined, undefined) ->
+maybe_add_authorizing_id(JObj, AccountId, 'undefined', 'undefined') ->
     KVs = [{<<"Authorizing-ID">>, AccountId}
           ,{<<"Authorizing-Type">>, <<"account">>}
           ],
     kz_json:set_values(KVs, JObj);
-maybe_add_authorizing_id(JObj, AccountId, AccountId, undefined) ->
+maybe_add_authorizing_id(JObj, AccountId, AccountId, 'undefined') ->
     kz_json:set_value(<<"Authorizing-Type">>, <<"account">>, JObj);
-maybe_add_authorizing_id(JObj, AccountId, undefined, <<"account">>) ->
+maybe_add_authorizing_id(JObj, AccountId, 'undefined', <<"account">>) ->
     kz_json:set_value(<<"Authorizing-ID">>, AccountId, JObj);
 maybe_add_authorizing_id(JObj, _AccountId, _AuthorizingId, _AuthorizingType) ->
     JObj.

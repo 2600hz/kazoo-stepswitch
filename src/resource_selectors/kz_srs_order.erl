@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2022, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -54,7 +54,7 @@ default_weight(<<"descend">>) -> ?DEFAULT_DESC_WEIGHT.
 -spec check_source(tuple() | any()) -> 'ok'.
 check_source({'database', _}) -> 'ok';
 check_source({'resource', _}) -> 'ok';
-check_source(Source) -> throw({invalid_source, Source}).
+check_source(Source) -> throw({'invalid_source', Source}).
 
 -spec sort(integer(), integer(), kz_term:ne_binary()) -> boolean().
 sort(Lesser, Greater, <<"ascend">>) -> Lesser =< Greater;

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Preforms maintenance operations against the stepswitch dbs
 %%% @author Karl Anderson
 %%%
@@ -25,6 +25,8 @@
         ]).
 
 -include("stepswitch.hrl").
+
+-elvis([{elvis_style, no_debug_call, disable}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
