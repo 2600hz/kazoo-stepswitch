@@ -375,7 +375,7 @@ build_local_extension(#state{number_props=Props
       ,{<<"Asserted-Identity-Realm">>, kapi_offnet_resource:asserted_identity_realm(OffnetReq, Realm)}
 
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
-      ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
+      ,{<<"Bridge-Actions">>, sanitize_actions_for_offnet(kapi_offnet_resource:outbound_actions(OffnetReq))}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
 
       ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
@@ -404,6 +404,26 @@ build_local_extension(#state{number_props=Props
       ,{<<"Simplify-Loopback">>, <<"false">>}
       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec sanitize_actions_for_offnet(kz_term:api_object()) -> kz_term:api_object().
+sanitize_actions_for_offnet('undefined') ->
+    'undefined';
+sanitize_actions_for_offnet(OutboundActions) ->
+    Actions1 = kz_json:map(fun remove_onnet_call_recording/2, OutboundActions),
+    case kz_json:is_empty(Actions1) of
+        'true' -> 'undefined';
+        'false' -> Actions1
+    end.
+
+%% @doc Remove Inbound Onnet recording since the call is leaving this account
+%% and the recording doesn't belong to the account on ther other side.
+-spec remove_onnet_call_recording(kz_json:key(), kz_json:object()) -> {kz_json:key(), kz_json:object()}.
+remove_onnet_call_recording(OnSomethingKey, JObj) ->
+    Updated = kz_json:delete_keys([<<"Record-Endpoint">>], JObj),
+    case kz_json:is_empty(Updated) of
+        'true' -> {OnSomethingKey, 'undefined'};
+        'false'-> {OnSomethingKey, Updated}
+    end.
 
 -spec get_account_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_realm(AccountId) ->
