@@ -1333,7 +1333,7 @@ gateway_dialstring(#gateway{route='undefined'
                            ,server=Server
                            ,port=Port
                            ,format_request_uri=FmtReqUri
-                           ,request_realm=ReqRelm 
+                           ,request_realm=ReqRelm
                            }
                   ,Number
                   ) ->
@@ -1345,7 +1345,7 @@ gateway_dialstring(#gateway{route='undefined'
             'false' -> <<>>
         end,
     case FmtReqUri =:= 'true'
-        andalso ReqRelm =/= 'undefined' 
+        andalso ReqRelm =/= 'undefined'
     of
         'true' ->
             Route = list_to_binary(["sip:", Prefix, Number, Suffix, "@", ReqRelm, DialStringPort]);
