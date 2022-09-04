@@ -762,7 +762,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
         ,{<<"SIP-Invite-Parameters">>, sip_invite_parameters(Gateway, OffnetJObj)}
-        ,{<<"SIP-Invite-Request-URI">>, sip_invite_request_url(Gateway)}
+        ,{<<"SIP-Invite-Request-URI">>, sip_invite_request_uri(Gateway, DestinationNumber)}
         ,{<<"Privacy-Method">>, PrivacyMethod}
         ,{<<"Privacy-Hide-Name">>
          ,HideName
@@ -776,9 +776,6 @@ gateway_to_endpoint(DestinationNumber
          }
         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
-
--spec sip_invite_request_url(gateway()) -> kz_term:ne_binaries().
-sip_invite_request_url(Gateway) -> Gateway#gateway.request_realm.
 
 
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
@@ -1357,6 +1354,34 @@ gateway_dialstring(#gateway{route='undefined'
 gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
+
+%%------------------------------------------------------------------------------
+%% @doc Build the sip request url
+%% @end
+%%------------------------------------------------------------------------------
+-spec sip_invite_request_uri(gateway(), kz_term:ne_binary()) -> kz_term:ne_binary().
+sip_invite_request_uri(#gateway{route='undefined'
+                           ,prefix=Prefix
+                           ,suffix=Suffix
+                           ,port=Port
+                           ,format_request_uri='true'
+                           ,request_realm=ReqRelm
+                           }
+                  ,Number
+                  ) ->
+    DialStringPort =
+        case not kz_term:is_empty(Port)
+            andalso Port =/= 5060
+        of
+            'true' -> <<":", (kz_term:to_binary(Port))/binary>>;
+            'false' -> <<>>
+        end,
+        RequestUri = list_to_binary(["sip:", Prefix, Number, Suffix, "@", ReqRelm, DialStringPort]),
+    lager:debug("created gateway request_uri ~s", [RequestUri]),
+    RequestUri;
+sip_invite_request_uri(#gateway{route=RequestUri}, _) ->
+    lager:debug("using pre-configured gateway route ~s", [RequestUri]),
+    RequestUri.
 
 -spec get_resrc_id(resource()) -> kz_term:api_binary().
 get_resrc_id(#resrc{id=Id}) -> Id.
