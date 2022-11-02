@@ -320,6 +320,7 @@ build_local_extension(#state{number_props=Props
                               ,{<<"Resource-ID">>, AccountId}
                               ,{<<"Resource-Type">>, <<"onnet-termination">>}
                               ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                              ,{<<"Account-Cross-Boundary">>, true}
                               ]
                              ,CCVsOrig
                              ),
@@ -347,7 +348,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
-
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
                    ]),
 
     Endpoint = kz_json:from_list(
