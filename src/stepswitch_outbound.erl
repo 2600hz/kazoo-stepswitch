@@ -190,6 +190,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
              ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
              ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+             ,{<<"Account-Cross-Boundary">>, true}
 
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", TargetRealm/binary>>}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, TargetAccountId}
@@ -205,6 +206,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, TargetRealm}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
 
              ]),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
@@ -244,7 +246,7 @@ no_resources(OffnetReq) ->
     props:filter_undefined(
       [{?KEY_TO_DID, ToDID}
       ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
-      ,{<<"Response-Code">>, <<"sip:404">>}
+      ,{<<"Response-Code">>, <<"sip:485">>}
       ,{<<"Error-Message">>, <<"no available resources">>}
       ,{?KEY_CALL_ID, kapi_offnet_resource:call_id(OffnetReq)}
       ,{?KEY_MSG_ID, kapi_offnet_resource:msg_id(OffnetReq)}
