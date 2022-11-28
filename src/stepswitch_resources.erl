@@ -132,6 +132,8 @@
                  ,privacy_hide_name = 'false' :: boolean()
                  ,privacy_hide_number = 'false' :: boolean()
                  ,invite_parameters = 'undefined' :: kz_term:api_object()
+                 ,format_request_uri = 'false' :: boolean()
+                 ,request_realm = 'undefined' :: kz_term:api_binary()
                  }).
 
 -record(resrc, {id :: kz_term:api_binary()
@@ -774,6 +776,7 @@ gateway_to_endpoint(DestinationNumber
         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
+
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
     static_sip_invite_parameters(Gateway)
@@ -1281,6 +1284,8 @@ gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
             ,privacy_hide_name = kz_privacy:should_hide_name(GatewayJObj, HideName)
             ,privacy_hide_number = kz_privacy:should_hide_name(GatewayJObj, HideNumber)
             ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, GatewayJObj)
+            ,format_request_uri = kz_json:is_true(<<"format_request_uri">>, GatewayJObj)
+            ,request_realm = kz_json:get_ne_value(<<"request_realm">>, GatewayJObj)
             }.
 
 -spec gateway_ccvs(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -1323,6 +1328,8 @@ gateway_dialstring(#gateway{route='undefined'
                            ,suffix=Suffix
                            ,server=Server
                            ,port=Port
+                           ,format_request_uri=FmtReqUri
+                           ,request_realm=ReqRelm
                            }
                   ,Number
                   ) ->
@@ -1333,8 +1340,14 @@ gateway_dialstring(#gateway{route='undefined'
             'true' -> <<":", (kz_term:to_binary(Port))/binary>>;
             'false' -> <<>>
         end,
-    Route =
-        list_to_binary(["sip:", Prefix, Number, Suffix, "@", Server, DialStringPort]),
+    case FmtReqUri =:= 'true'
+        andalso ReqRelm =/= 'undefined'
+    of
+        'true' ->
+            Route = list_to_binary(["sip:", Prefix, Number, Suffix, "@", ReqRelm, DialStringPort]);
+        'false' ->
+            Route = list_to_binary(["sip:", Prefix, Number, Suffix, "@", Server, DialStringPort])
+    end,
     lager:debug("created gateway route ~s", [Route]),
     Route;
 gateway_dialstring(#gateway{route=Route}, _) ->
