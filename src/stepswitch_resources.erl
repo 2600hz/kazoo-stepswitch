@@ -49,6 +49,8 @@
         ,get_resrc_selector_marks/1
         ,get_resrc_classifier/1
         ,get_resrc_classifier_enable/1
+        ,get_resrc_supports_pidflo/1
+        ,get_resrc_classifier_include_pidflo/1
         ]).
 
 -export([set_resrc_id/2
@@ -77,6 +79,8 @@
         ,set_resrc_formatters/2
         ,set_resrc_proxies/2
         ,set_resrc_selector_marks/2
+        ,set_resrc_supports_pidflo/2
+        ,set_resrc_classifier_include_pidflo/2
         ]).
 
 
@@ -167,10 +171,12 @@
                ,privacy_hide_number = 'false' :: boolean()
                ,classifier = 'undefined' :: kz_term:api_binary()
                ,classifier_enable = 'true' :: boolean()
+               ,classifier_include_pidflo = 'false' :: boolean()
                ,gateway_strategy = 'sequential' :: gateway_strategy()
                ,ccvs :: kz_term:api_object()
                ,sip_headers :: kz_term:api_object()
                ,sip_interface :: kz_term:api_binary()
+               ,supports_pidflo = 'false' :: boolean()
                }).
 
 -type gateway_strategy() :: 'sequential' | 'random'.
@@ -240,6 +246,7 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"Privacy-Method">>,  Resource#resrc.privacy_method}
       ,{<<"Privacy-Hide-Name">>, Resource#resrc.privacy_hide_name}
       ,{<<"Privacy-Hide-Number">>, Resource#resrc.privacy_hide_number}
+      ,{<<"Supports-Pidflo">>, Resource#resrc.supports_pidflo}
       ]).
 
 -spec sort_resources(resources()) -> resources().
@@ -566,6 +573,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                   ,weight=Weight
                                   ,proxies=Proxies
                                   ,classifier=Classifier
+                                  ,classifier_include_pidflo=IncludePidflo
                                   } = Resource
                            ,Number
                            ,OffnetJObj
@@ -590,9 +598,11 @@ maybe_resource_to_endpoints(#resrc{id=Id
                            ,{<<"E164-Origination">>, stepswitch_util:convert_to_e164_format(CallerIdNumber, 'undefined')}
                            ,{<<"DID-Classifier">>, knm_converters:classify(Number)}
                            ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
+                           ,{<<"Include-Pidflo">>, IncludePidflo}
                            ]),
             Updates = [{<<"Name">>, Name}
                       ,{<<"Weight">>, Weight}
+                      ,{<<"Supports-Pidflo">>, get_resrc_supports_pidflo(Resource)}
                       ],
             Gateways = get_resrc_gateways(Resource),
 
@@ -1078,6 +1088,7 @@ create_classifier_resource(ResourceJObj, ClassifierJObj, Classifier, ConfigClass
           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
           ,{<<"classifier">>, Classifier}
           ,{<<"classifier_enable">>, kz_json:is_true(<<"enabled">>, ClassifierJObj, 'true')}
+          ,{<<"classifier_include_pidflo">>, kz_json:is_true(<<"include_pidflo">>, ClassifierJObj)}
           ]
          ),
     create_classifier_gateways(kz_json:set_values(Props, ResourceJObj), ClassifierJObj).
@@ -1140,10 +1151,12 @@ resource_from_jobj(JObj) ->
                      ,privacy_hide_number=kz_privacy:should_hide_number(JObj)
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
+                     ,classifier_include_pidflo=kz_json:is_true(<<"classifier_include_pidflo">>, JObj)
                      ,gateway_strategy=kz_term:to_atom(kzd_resources:gateway_strategy(JObj, <<"sequential">>), 'true')
                      ,ccvs = kzd_resources:ccvs(JObj, kz_json:new())
                      ,sip_headers = kzd_resources:cshs(JObj, kz_json:new())
                      ,sip_interface = kzd_resources:custom_sip_interface(JObj)
+                     ,supports_pidflo = kzd_resources:supports_pidflo(JObj)
                      },
     Gateways = gateways_from_jobjs(kzd_resources:gateways(JObj, []), Resource),
     Resource#resrc{gateways=Gateways}.
@@ -1439,6 +1452,12 @@ get_resrc_classifier(#resrc{classifier=Classifier}) -> Classifier.
 -spec get_resrc_classifier_enable(resource()) -> boolean().
 get_resrc_classifier_enable(#resrc{classifier_enable=Enabled}) -> Enabled.
 
+-spec get_resrc_supports_pidflo(resource()) -> boolean().
+get_resrc_supports_pidflo(#resrc{supports_pidflo=Supported}) -> Supported.
+
+-spec get_resrc_classifier_include_pidflo(resource()) -> boolean().
+get_resrc_classifier_include_pidflo(#resrc{classifier_include_pidflo=Included}) -> Included.
+
 -spec set_resrc_id(resource(), kz_term:api_binary()) -> resource().
 set_resrc_id(Resource, Id) -> Resource#resrc{id=Id}.
 
@@ -1516,3 +1535,9 @@ set_resrc_proxies(Resource, Proxies) -> Resource#resrc{proxies=Proxies}.
 
 -spec set_resrc_selector_marks(resource(), kz_term:proplist()) -> resource().
 set_resrc_selector_marks(Resource, Marks) -> Resource#resrc{selector_marks=Marks}.
+
+-spec set_resrc_supports_pidflo(resource(), boolean()) -> resource().
+set_resrc_supports_pidflo(Resource, Supported) -> Resource#resrc{supports_pidflo=Supported}.
+
+-spec set_resrc_classifier_include_pidflo(resource(), boolean()) -> resource().
+set_resrc_classifier_include_pidflo(Resource, Included) -> Resource#resrc{classifier_include_pidflo=Included}.
