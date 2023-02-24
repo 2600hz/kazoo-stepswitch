@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2023, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -240,7 +240,7 @@ maybe_constrain_shortdial_correction(_Length, _Low, _Up) ->
 -spec get_sip_headers(kapi_offnet_resource:req()) -> kz_json:object().
 get_sip_headers(OffnetReq) ->
     SIPHeaders = kapi_offnet_resource:custom_sip_headers(OffnetReq, kz_json:new()),
-    case get_diversions(SIPHeaders) of
+    case get_diversions(OffnetReq, SIPHeaders) of
         'undefined' ->
             maybe_remove_diversions(SIPHeaders);
         Diversions ->
@@ -255,20 +255,24 @@ get_sip_headers(OffnetReq) ->
 maybe_remove_diversions(JObj) ->
     kz_json:delete_key(<<"Diversions">>, JObj).
 
--spec get_diversions(kz_json:object()) ->
-          'undefined' |
-          kz_term:ne_binaries().
-get_diversions(JObj) ->
-    Inception = kz_json:get_value(<<"Inception">>, JObj),
-    Diversions = kz_json:get_value(<<"Diversions">>, JObj, []),
-    get_diversions(Inception, Diversions).
+-spec get_diversions(kapi_offnet_resource:req(), kz_json:object()) ->
+          kz_term:api_ne_binaries().
+get_diversions(OffnetReq, JObj) ->
+    case kapi_offnet_resource:sip_diversions(OffnetReq) of
+        'undefined' ->
+            Inception = kz_json:get_value(<<"Inception">>, JObj),
+            Diversions = kz_json:get_value(<<"Diversions">>, JObj, []),
+            maybe_set_diversions(Inception, Diversions);
+        SipDiversions ->
+            SipDiversions
+    end.
 
--spec get_diversions(kz_term:api_binary(), kz_term:ne_binaries()) ->
+-spec maybe_set_diversions(kz_term:api_binary(), kz_term:ne_binaries()) ->
           'undefined' |
           kz_term:ne_binaries().
-get_diversions('undefined', _Diversion) -> 'undefined';
-get_diversions(_Inception, []) -> 'undefined';
-get_diversions(Inception, Diversions) ->
+maybe_set_diversions('undefined', _Diversion) -> 'undefined';
+maybe_set_diversions(_Inception, []) -> 'undefined';
+maybe_set_diversions(Inception, Diversions) ->
     Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
          ],
