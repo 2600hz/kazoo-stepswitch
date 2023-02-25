@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2021, 2600Hz
+%%% @copyright (C) 2013-2023, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -276,6 +276,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+      ,{?KEY_SIP_DIVERSIONS, kapi_offnet_resource:sip_diversions(OffnetReq)}
       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 

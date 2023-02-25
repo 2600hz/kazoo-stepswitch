@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2022, 2600Hz
+%%% @copyright (C) 2013-2023, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -348,6 +348,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
 
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
                    ]),
 
     Endpoint = kz_json:from_list(
