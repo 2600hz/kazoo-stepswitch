@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2023, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,8 +33,6 @@
 -endif.
 
 -include("stepswitch.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
--include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -362,13 +360,21 @@ endpoint_props(Endpoint, AccountId) ->
 empty_list_on_undefined('undefined') -> [];
 empty_list_on_undefined(L) -> L.
 
+-spec local_sip_headers(kz_json:object()) -> kz_json:object().
+local_sip_headers(Endpoint) ->
+    case kz_json:get_value(<<"Custom-SIP-Headers">>, Endpoint) of
+        undefined -> kz_json:new();
+        CSHs -> CSHs
+    end.
+
 -spec maybe_add_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_add_sip_headers(Endpoint, SIPHeaders) ->
-    LocalSIPHeaders = kz_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, kz_json:new()),
+    LocalSIPHeaders = local_sip_headers(Endpoint),
+    MergedHeaders = kz_json:merge_jobjs(SIPHeaders, LocalSIPHeaders),
 
-    case kz_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
-        ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> kz_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
+    case kz_term:is_empty(MergedHeaders) of
+        true -> Endpoint;
+        false -> kz_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
     end.
 
 -spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2022, 2600Hz
+%%% @copyright (C) 2011-2023, 2600Hz
 %%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -16,8 +16,6 @@
 -export([handle_req/2]).
 
 -include("stepswitch.hrl").
--include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
--include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc process an offnet resource request (outbound)
@@ -74,10 +72,7 @@ handle_originate_req(Number, OffnetReq) ->
 
 -spec maybe_force_originate_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_originate_outbound(Props, OffnetReq) ->
-    case knm_options:should_force_outbound(Props)
-        orelse kz_json:is_true(<<"Force-Outbound">>, OffnetReq, 'false')
-        orelse kz_term:is_ne_binary(kapi_offnet_resource:hunt_account_id(OffnetReq))
-    of
+    case should_force_outbound(Props, OffnetReq) of
         'false' -> local_originate(Props, OffnetReq);
         'true' -> maybe_originate(knm_options:number(Props), OffnetReq)
     end.
@@ -88,13 +83,16 @@ maybe_force_originate_outbound(Props, OffnetReq) ->
 %%------------------------------------------------------------------------------
 -spec maybe_force_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
-    case knm_options:should_force_outbound(Props)
-        orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
-        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
-    of
+    case should_force_outbound(Props, OffnetReq) of
         'false' -> local_extension(Props, OffnetReq);
         'true' -> maybe_bridge(knm_options:number(Props), OffnetReq)
     end.
+
+-spec should_force_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> boolean().
+should_force_outbound(Props, OffnetReq) ->
+    knm_options:should_force_outbound(Props)
+        orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
+        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -206,6 +204,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, TargetRealm}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
 
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
              ]),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
     kz_json:from_list(
