@@ -1,9 +1,11 @@
 -ifndef(STEPSWITCH_HRL).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 -include_lib("kazoo_numbers/include/knm_phone_number.hrl").
+-include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 -define(LOCAL_RESOURCES_VIEW, <<"resources/crossbar_listing">>).
 

@@ -349,6 +349,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
                    ]),
 
     Endpoint = kz_json:from_list(
