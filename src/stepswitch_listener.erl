@@ -11,7 +11,6 @@
 -behaviour(gen_listener).
 
 -include("stepswitch.hrl").
--include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 %% API
 -export([start_link/0]).

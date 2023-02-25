@@ -35,8 +35,6 @@
 -endif.
 
 -include("stepswitch.hrl").
--include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
--include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -467,6 +465,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
       ,{<<"SIP-Invite-Contact-User">>, Number}
+      ,{?KEY_SIP_DIVERSIONS, kapi_offnet_resource:sip_diversions(OffnetReq)}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
