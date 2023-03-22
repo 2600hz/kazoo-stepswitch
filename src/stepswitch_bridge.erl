@@ -837,11 +837,13 @@ avoid_privacy_if_emergency_call('false', Endpoints) ->
     Endpoints.
 
 %%------------------------------------------------------------------------------
-%% @doc If resource supports PIDF+LO payloads, classifier has include_pidflo flag
-%% set to true, and  OffnetReq has an 'emergency_address' set, include the emergency
-%% address withing the Endpoint's CCVs, in order to make it available for
-%% ecallmgr_fs_xml:kazoo_var_to_fs_var/2 function to build the XML multi-part payload.
-%% Also, add the Geolocation SIP header.
+%% @doc If resource supports PIDF+LO payloads, classifier has include_pidflo
+%% flag set to true, and  OffnetReq has an 'emergency_address' set, include the
+%% emergency address (in XML format) withing the Endpoint's CCVs, in order to
+%% make it available for ecallmgr_fs_xml:kazoo_var_to_fs_var/2 function to build
+%% the XML multi-part payload.
+%%
+%% Also, adds the Geolocation (Custom) SIP header.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_add_pidflo(stepswitch_resources:endpoints(), kapi_offnet_resource:req(), kz_term:ne_binary()) ->
@@ -866,14 +868,17 @@ maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
             Endpoint;
         AddressJObj ->
             lager:debug("emergency address found and resource supports PIDF+LO, updating resource"),
-            NewHeaders = kz_json:set_value(<<"Geolocation">>
-                                          ,<<"<cid:", BridgeFromURI/binary, ">">>
-                                          ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
-                                          ),
-            kz_json:set_values([{?KEY_CSHS, NewHeaders}
-                               ,{[?KEY_CCVS, ?KEY_EMERGENCY_ADDRESS]
-                                ,kz_json:set_value(<<"sip_from_uri">>, BridgeFromURI, AddressJObj)
-                                }
+            PIDFLO_XML = stepswitch_pidflo:emergency_address_to_xml(AddressJObj, BridgeFromURI),
+            NewCHeaders = kz_json:set_value(<<"Geolocation">>
+                                           ,<<"<cid:", BridgeFromURI/binary, ">">>
+                                           ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
+                                           ),
+            NewCCVs = kz_json:set_value(<<"Pidflo-Xml">>
+                                       ,PIDFLO_XML
+                                       ,kz_json:get_value(?KEY_CCVS, Endpoint, kz_json:new())
+                                       ),
+            kz_json:set_values([{?KEY_CSHS, NewCHeaders}
+                               ,{?KEY_CCVS, NewCCVs}
                                ]
                               ,Endpoint
                               )
