@@ -851,7 +851,7 @@ avoid_privacy_if_emergency_call('false', Endpoints) ->
 maybe_add_pidflo(Endpoints, OffnetReq, BridgeFromURI) ->
     F = fun(E) ->
                 kz_json:is_true(<<"Supports-Pidflo">>, E)
-                andalso kz_json:is_true([?KEY_CCVS, <<"Include-Pidflo">>], E)
+                    andalso kz_json:is_true([?KEY_CCVS, <<"Include-Pidflo">>], E)
         end,
     [maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, F(Endpoint)) || Endpoint <- Endpoints].
 
