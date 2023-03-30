@@ -869,17 +869,13 @@ maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
         AddressJObj ->
             lager:debug("emergency address found and resource supports PIDF+LO, updating resource"),
             PIDFLO_XML = stepswitch_pidflo:emergency_address_to_xml(AddressJObj, BridgeFromURI),
-            NewCHeaders = kz_json:set_value(<<"Geolocation">>
-                                           ,<<"<cid:", BridgeFromURI/binary, ">">>
-                                           ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
-                                           ),
-            NewCCVs = kz_json:set_value(<<"Pidflo-Xml">>
-                                       ,PIDFLO_XML
-                                       ,kz_json:get_value(?KEY_CCVS, Endpoint, kz_json:new())
-                                       ),
-            kz_json:set_values([{?KEY_CSHS, NewCHeaders}
-                               ,{?KEY_CCVS, NewCCVs}
-                               ]
-                              ,Endpoint
-                              )
+            GeoLocation = <<"<cid:", BridgeFromURI/binary, ">">>,
+            NewCHeaders = kz_json:set_values([{<<"Geolocation">>, GeoLocation}
+                                             ,{<<"SIP-Multipart">>
+                                              ,kz_json:from_list([{<<"pidflo">>, PIDFLO_XML}])
+                                              }
+                                             ]
+                                            ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
+                                            ),
+            kz_json:set_value(?KEY_CSHS, NewCHeaders, Endpoint)
     end.
