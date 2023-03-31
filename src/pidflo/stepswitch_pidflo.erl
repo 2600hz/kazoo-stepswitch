@@ -27,7 +27,6 @@ emergency_address_to_xml(JObj, BridgeFromURI) ->
 
     {'ok', PIDFLO_XML} = {'ok', xmerl:export([PresenceEl], 'pidflo_xml')},
     PIDFLOBin = erlang:iolist_to_binary(PIDFLO_XML),
-    lager:critical_unsafe("PIDFLOBin: ~p", [PIDFLOBin]), %% TODO: Remove this debug line
 
     <<"application/pidf+xml:", PIDFLOBin/binary>>.
 
