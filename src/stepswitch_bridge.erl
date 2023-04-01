@@ -873,12 +873,12 @@ maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
                                            ,<<"<cid:", BridgeFromURI/binary, ">">>
                                            ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
                                            ),
-            NewMultipart = kz_json:set_value(<<"pidflo">>
-                                            ,PIDFLO_XML
-                                            ,kz_json:get_value(?KEY_SIP_MULTIPART, Endpoint, kz_json:new())
-                                            ),
+            NewMultiparts = kz_json:set_value(<<"pidflo">>
+                                             ,PIDFLO_XML
+                                             ,kz_json:get_value(?KEY_SIP_MULTIPARTS, Endpoint, kz_json:new())
+                                             ),
             kz_json:set_values([{?KEY_CSHS, NewCHeaders}
-                               ,{?KEY_SIP_MULTIPART, NewMultipart}
+                               ,{?KEY_SIP_MULTIPARTS, NewMultiparts}
                                ]
                               ,Endpoint
                               )
