@@ -3,7 +3,7 @@
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_ips,kazoo_nodes,kazoo_numbers,
                              kazoo_services,kazoo_sip,kazoo_stdlib,kernel,
-                             lager,stdlib]},
+                             lager,stdlib,xmerl]},
               {description,"Stepswitch: Routes calls coming or going offnet, like a line finder"},
               {env,[{is_kazoo_app,true}]},
               {mod,{stepswitch_app,[]}},

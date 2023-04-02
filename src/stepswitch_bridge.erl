@@ -419,9 +419,10 @@ build_bridge(#state{endpoints=Endpoints
     DefaultFailOnSingleReject = kapi_offnet_resource:fail_on_single_reject(OffnetReq, ?DEFAULT_FAIL_ON_SINGLE_REJECT(AccountId)),
     FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs, DefaultFailOnSingleReject),
 
+    BridgeFromURI = bridge_from_uri(Number, OffnetReq),
     AddCCVs = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
                                      ,{<<"Account-ID">>, AccountId}
-                                     ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
+                                     ,{<<"From-URI">>, BridgeFromURI}
                                      ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                                      ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                                      ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
@@ -452,7 +453,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Custom-Application-Vars">>, kapi_offnet_resource:custom_application_vars(OffnetReq)}
       ,{<<"Custom-Channel-Vars">>, CCVs}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-      ,{<<"Endpoints">>, FmtEndpoints}
+      ,{<<"Endpoints">>, maybe_add_pidflo(FmtEndpoints, OffnetReq, BridgeFromURI)}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
       ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
       ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, Number)}
@@ -819,7 +820,6 @@ get_event_type(CallEvt) ->
     {Cat, Name} = kz_api:event_type(CallEvt),
     {Cat, Name, kz_call_event:call_id(CallEvt)}.
 
-
 %%------------------------------------------------------------------------------
 %% @doc If it is an emergency call (i.e 911 call) don't honor `privacy' settings.
 %% @end
@@ -835,3 +835,51 @@ avoid_privacy_if_emergency_call('true', Endpoints) ->
     lists:foldl(F, [], Endpoints);
 avoid_privacy_if_emergency_call('false', Endpoints) ->
     Endpoints.
+
+%%------------------------------------------------------------------------------
+%% @doc If resource supports PIDF+LO payloads, classifier has include_pidflo
+%% flag set to true, and  OffnetReq has an 'emergency_address' set, include the
+%% emergency address (in XML format) withing the Endpoint's CCVs, in order to
+%% make it available for ecallmgr_fs_xml:kazoo_var_to_fs_var/2 function to build
+%% the XML multi-part payload.
+%%
+%% Also, adds the Geolocation (Custom) SIP header.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_pidflo(stepswitch_resources:endpoints(), kapi_offnet_resource:req(), kz_term:ne_binary()) ->
+          stepswitch_resources:endpoints().
+maybe_add_pidflo(Endpoints, OffnetReq, BridgeFromURI) ->
+    F = fun(E) ->
+                kz_json:is_true(<<"Supports-Pidflo">>, E)
+                    andalso kz_json:is_true([?KEY_CCVS, <<"Include-Pidflo">>], E)
+        end,
+    [maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, F(Endpoint)) || Endpoint <- Endpoints].
+
+-spec maybe_add_pidflo(stepswitch_resources:endpoint(), kapi_offnet_resource:req(), kz_term:ne_binary(), boolean()) ->
+          stepswitch_resources:endpoint().
+maybe_add_pidflo(Endpoint, _OffnetReq, _BridgeFromURI, 'false') ->
+    %% PIDF+LO not supported or classifier not configured to include_pidflo.
+    Endpoint;
+maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
+    lager:debug("getting emergency address"),
+    case kapi_offnet_resource:emergency_address(OffnetReq) of
+        'undefined' ->
+            %% Not emergency address configured, skip building PIDF+LO payload.
+            Endpoint;
+        AddressJObj ->
+            lager:debug("emergency address found and resource supports PIDF+LO, updating resource"),
+            PIDFLO_XML = stepswitch_pidflo:emergency_address_to_xml(AddressJObj, BridgeFromURI),
+            NewCHeaders = kz_json:set_value(<<"Geolocation">>
+                                           ,<<"<cid:", BridgeFromURI/binary, ">">>
+                                           ,kz_json:get_value(?KEY_CSHS, Endpoint, kz_json:new())
+                                           ),
+            NewMultiparts = kz_json:set_value(<<"pidflo">>
+                                             ,PIDFLO_XML
+                                             ,kz_json:get_value(?KEY_SIP_MULTIPARTS, Endpoint, kz_json:new())
+                                             ),
+            kz_json:set_values([{?KEY_CSHS, NewCHeaders}
+                               ,{?KEY_SIP_MULTIPARTS, NewMultiparts}
+                               ]
+                              ,Endpoint
+                              )
+    end.

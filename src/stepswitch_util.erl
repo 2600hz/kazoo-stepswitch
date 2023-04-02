@@ -480,8 +480,9 @@ maybe_resource_to_endpoints(Resource
                  ],
     Updates = [{<<"Name">>, Name}
               ,{<<"Weight">>, Weight}
+              ,{<<"Supports-Pidflo">>, stepswitch_resources:get_resrc_supports_pidflo(Resource)}
               ],
-    EndpointList = [kz_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates))
+    EndpointList = [kz_json:set_values(Updates, update_ccvs(Endpoint, CCVUpdates))
                     || Endpoint <- stepswitch_resources:gateways_to_endpoints(DestinationNumber, Gateways, OffnetJObj, [])
                    ],
     stepswitch_resources:maybe_add_proxies(EndpointList, Proxies, Endpoints).
