@@ -1043,7 +1043,7 @@ create_resource(ResourceJObj, Resources) ->
     case kzd_resources:classifiers(ResourceJObj) of
         'undefined' -> [resource_from_jobj(ResourceJObj) | Resources];
         ResourceClassifiers ->
-            AvailableClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
+            AvailableClassifiers = knm_converters:available_classifiers(),
             create_resource(kz_json:to_proplist(ResourceClassifiers)
                            ,AvailableClassifiers
                            ,ResourceJObj
@@ -1053,17 +1053,17 @@ create_resource(ResourceJObj, Resources) ->
 
 -spec create_resource(kz_term:proplist(), kz_term:proplist(), kzd_resources:doc(), resources()) -> resources().
 create_resource([], _ConfigClassifiers, _ResourceJObj, Resources) -> Resources;
-create_resource([{ResourceClassifier, ResourceClassifierJObj}|ResourceClassifiers]
+create_resource([{ResourceClassifierName, ResourceClassifierJObj}|ResourceClassifiers]
                ,ConfigClassifiers, ResourceJObj, Resources
                ) ->
-    case props:get_value(ResourceClassifier, ConfigClassifiers) of
+    case kz_json:find_value(<<"name">>, ResourceClassifierName, ConfigClassifiers, 'undefined') of
         'undefined' ->
             create_resource(ResourceClassifiers, ConfigClassifiers, ResourceJObj, Resources);
         ConfigClassifier ->
             JObj =
                 create_classifier_resource(ResourceJObj
                                           ,ResourceClassifierJObj
-                                          ,ResourceClassifier
+                                          ,ResourceClassifierName
                                           ,ConfigClassifier
                                           ),
             create_resource(ResourceClassifiers
@@ -1075,7 +1075,7 @@ create_resource([{ResourceClassifier, ResourceClassifierJObj}|ResourceClassifier
                            )
     end.
 
--spec create_classifier_resource(kzd_resources:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
+-spec create_classifier_resource(kzd_resources:doc(), kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 create_classifier_resource(ResourceJObj, ClassifierJObj, Classifier, ConfigClassifier) ->
     DefaultRegex = kz_json:get_ne_binary_value(<<"regex">>, ConfigClassifier),
     DefaultEmergency = kz_json:is_true(<<"emergency">>, ConfigClassifier, 'undefined'),

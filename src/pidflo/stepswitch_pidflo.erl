@@ -13,7 +13,7 @@
 -export([emergency_address_to_xml/2]).
 
 
--spec emergency_address_to_xml(kz_json:api_object(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec emergency_address_to_xml(kz_term:api_object(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 emergency_address_to_xml('undefined', _BridgeFromURI) ->
     'undefined';
 emergency_address_to_xml(JObj, BridgeFromURI) ->
