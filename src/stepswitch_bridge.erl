@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2024, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -729,15 +729,29 @@ set_emergency_call_meta({Number, #state{resource_req=OffnetReq}=State}, Props) -
 
 -spec set_emergency_device_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
 set_emergency_device_meta(OffnetReq, Props) ->
-    AccountID = kapi_offnet_resource:account_id(OffnetReq),
-    DeviceID = kz_json:get_ne_value(<<"Authorizing-ID">>, kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq), 'undefined'),
-    OwnerID =kz_json:get_ne_value(<<"Owner-ID">>, kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq), 'undefined'),
-    {'ok', DeviceJObj} = kzd_devices:fetch(AccountID, DeviceID),
-    [{<<"Authorizing-ID">>, DeviceID}
-    ,{<<"Owner-ID">>, OwnerID}
-    ,{<<"Device-Name">>, kzd_devices:name(DeviceJObj)}
+    RCCVs = kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq),
+
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
+
+    DeviceId = kz_json:get_ne_value(<<"Authorizing-ID">>, RCCVs),
+    OwnerId = kz_json:get_ne_value(<<"Owner-ID">>, RCCVs),
+
+    [{<<"Authorizing-ID">>, DeviceId}
+    ,{<<"Owner-ID">>, OwnerId}
+    ,{<<"Device-Name">>, device_name(AccountId, DeviceId)}
     | Props
     ].
+
+device_name(<<AccountId/binary>>, <<DeviceId/binary>>) ->
+    case kzd_devices:fetch(AccountId, DeviceId) of
+        {'ok', DeviceJObj} -> kzd_devices:name(DeviceJObj);
+        {'error', _E} ->
+            lager:info("failed to find device ~s in account ~s: ~p", [DeviceId, AccountId, _E]),
+            'undefined'
+    end;
+device_name(_AccountId, _DeviceId) ->
+    lager:info("no account id(~s) or device id(~s)", [_AccountId, _DeviceId]),
+    'undefined'.
 
 -spec set_emergency_address_meta({kz_term:ne_binary(), kapi_offnet_resource:req()}, kz_term:proplist()) -> kz_term:proplist().
 set_emergency_address_meta({Number, OffnetReq}, Props) ->
