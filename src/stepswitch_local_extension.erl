@@ -367,6 +367,9 @@ build_local_extension(#state{number_props=Props
                  ,{<<"Route">>, Number}
                  ,{<<"To-DID">>, Number}
                  ,{<<"To-Realm">>, FromRealm}
+                 ,{<<"Privacy-Hide-Number">>, kz_privacy:should_hide_number(OffnetReq)}
+                 ,{<<"Privacy-Hide-Name">>, kz_privacy:should_hide_name(OffnetReq)}
+                 ,{<<"Privacy-Method">>, kz_privacy:get_method(OffnetReq)}
                  ]),
 
     props:filter_undefined(
