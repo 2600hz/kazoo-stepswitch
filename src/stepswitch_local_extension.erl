@@ -128,7 +128,6 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
             handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
         {'error', 'not_found'} ->
             Payload = build_local_extension(State),
-            lager:info("built local extension: ~p", [Payload]),
             'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
             lager:debug("sent local extension command to ~s", [ControlQ]),
             {'noreply', State}
