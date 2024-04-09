@@ -224,6 +224,9 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"Route">>, Number}
       ,{<<"To-DID">>, Number}
       ,{<<"To-Realm">>, TargetRealm}
+      ,{<<"Privacy-Hide-Number">>, kz_privacy:should_hide_number(OffnetReq)}
+      ,{<<"Privacy-Hide-Name">>, kz_privacy:should_hide_name(OffnetReq)}
+      ,{<<"Privacy-Method">>, kz_privacy:get_method(OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ]).
 %%------------------------------------------------------------------------------
