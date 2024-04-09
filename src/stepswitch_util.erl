@@ -294,8 +294,8 @@ format_endpoints(Endpoints, Name, Number, OffnetReq) ->
 -type filter_fun() :: fun(({kz_term:ne_binary(), kz_term:ne_binary()}) -> boolean()).
 -spec build_filter_fun(kz_term:ne_binary(), kz_term:ne_binary()) -> filter_fun().
 build_filter_fun(Name, Number) ->
-    fun({?KEY_OUTBOUND_CALLER_ID_NUMBER, N}) when N =/= Number -> 'false';
-       ({?KEY_OUTBOUND_CALLER_ID_NAME, N}) when N =/= Name -> 'false';
+    fun({?KEY_OUTBOUND_CALLER_ID_NUMBER, N}) when N =:= Number -> 'false';
+       ({?KEY_OUTBOUND_CALLER_ID_NAME, N}) when N =:= Name -> 'false';
        (_Else) -> 'true'
     end.
 
