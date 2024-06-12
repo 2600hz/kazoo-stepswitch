@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2024, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,16 +18,20 @@ avoid_privacy_if_emergency_call_test_() ->
     NotEmergencyNotPrivacy = not_emergency_endpoint_without_privacy(),
 
     [{"If emergency endpoint and privacy enabled, don't enforce privacy"
-     ,check_expected(EmergencyNotPrivacy, [EmergencyPrivacy])
+     ,check_expected([EmergencyNotPrivacy], [EmergencyPrivacy])
      }
     ,{"If emergency endpoint and privacy disabled, let it be"
-     ,check_expected(EmergencyNotPrivacy, [EmergencyNotPrivacy])
+     ,check_expected([EmergencyNotPrivacy], [EmergencyNotPrivacy])
      }
     ,{"If NOT emergency endpoint and privacy enabled, let it be"
-     ,check_expected(NotEmergencyPrivacy, [NotEmergencyPrivacy])
+     ,check_expected([NotEmergencyPrivacy], [NotEmergencyPrivacy])
      }
     ,{"If NOT emergency endpoint and privacy disabled, let it be"
-     ,check_expected(NotEmergencyNotPrivacy, [NotEmergencyNotPrivacy])
+     ,check_expected([NotEmergencyNotPrivacy], [NotEmergencyNotPrivacy])
+     }
+    ,{"If a list of emergency endpoints, it's not reversed"
+     ,check_expected([emergency_endpoint_without_privacy(1), emergency_endpoint_without_privacy(2)],
+                     [emergency_endpoint_with_privacy(1), emergency_endpoint_with_privacy(2)])
      }
     ].
 
@@ -36,21 +40,25 @@ check_expected(Expected, Endpoints) ->
              stepswitch_bridge:contains_emergency_endpoints(Endpoints)
             ,Endpoints
             ),
-    ?_assert(kz_json:are_equal(Expected, hd(Resp))).
+    ?_assert(kz_json:are_equal(Expected, Resp)).
 
 emergency_endpoint_with_privacy() ->
-    endpoint(<<"true">>, <<"kazoo">>, 'true', 'true').
+    endpoint(<<"true">>, <<"kazoo">>, 'true', 'true', 50).
+emergency_endpoint_with_privacy(Weight) ->
+    endpoint(<<"true">>, <<"kazoo">>, 'true', 'true', Weight).
 
 emergency_endpoint_without_privacy() ->
-    endpoint(<<"true">>, <<"none">>, 'false', 'false').
+    endpoint(<<"true">>, <<"none">>, 'false', 'false', 50).
+emergency_endpoint_without_privacy(Weight) ->
+    endpoint(<<"true">>, <<"none">>, 'false', 'false', Weight).
 
 not_emergency_endpoint_with_privacy() ->
-    endpoint(<<"false">>, <<"kazoo">>, 'true', 'true').
+    endpoint(<<"false">>, <<"kazoo">>, 'true', 'true', 50).
 
 not_emergency_endpoint_without_privacy() ->
-    endpoint(<<"false">>, <<"none">>, 'false', 'false').
+    endpoint(<<"false">>, <<"none">>, 'false', 'false', 50).
 
-endpoint(IsEmergency, PrivacyMethod, PrivacyHideName, PrivacyHideNumber) ->
+endpoint(IsEmergency, PrivacyMethod, PrivacyHideName, PrivacyHideNumber, Weight) ->
     kz_json:from_list_recursive(
       [{<<"Route">>, <<"sip:911@testing.zswitch.net">>}
       ,{<<"Outbound-Callee-ID-Name">>, <<"911">>}
@@ -80,7 +88,7 @@ endpoint(IsEmergency, PrivacyMethod, PrivacyHideName, PrivacyHideNumber) ->
       ,{<<"Privacy-Method">>, PrivacyMethod}
       ,{<<"Privacy-Hide-Name">>, PrivacyHideName}
       ,{<<"Privacy-Hide-Number">>, PrivacyHideNumber}
-      ,{<<"Weight">>, 50}
+      ,{<<"Weight">>, Weight}
       ,{<<"Name">>, <<"E911 Testing Outbound Carrier - emergency">>}
       ]
      ).
