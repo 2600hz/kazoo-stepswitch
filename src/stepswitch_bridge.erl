@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2024, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -831,8 +831,8 @@ avoid_privacy_if_emergency_call('true', Endpoints) ->
              ,{?KEY_PRIVACY_HIDE_NUMBER, 'false'}
              ,{?KEY_PRIVACY_METHOD, <<"none">>}
              ],
-    F = fun(E, Acc) -> [kz_json:set_values(Values, E) | Acc] end,
-    lists:foldl(F, [], Endpoints);
+    F = fun(E) -> kz_json:set_values(Values, E) end,
+    lists:map(F, Endpoints);
 avoid_privacy_if_emergency_call('false', Endpoints) ->
     Endpoints.
 
