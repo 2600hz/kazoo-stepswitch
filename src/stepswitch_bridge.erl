@@ -845,8 +845,8 @@ avoid_privacy_if_emergency_call('true', Endpoints) ->
              ,{?KEY_PRIVACY_HIDE_NUMBER, 'false'}
              ,{?KEY_PRIVACY_METHOD, <<"none">>}
              ],
-    F = fun(E, Acc) -> [kz_json:set_values(Values, E) | Acc] end,
-    lists:foldl(F, [], Endpoints);
+    F = fun(E) -> kz_json:set_values(Values, E) end,
+    lists:map(F, Endpoints);
 avoid_privacy_if_emergency_call('false', Endpoints) ->
     Endpoints.
 
