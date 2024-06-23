@@ -1,24 +1,142 @@
-name: kazoo-application-stepswitch
-custom_files: null
-exposure: private
-base_branch: origin/5.3
-base_core: kazoo
-template: kazoo-application.spec.tmpl
-package:
-  centos7:
-    name: kazoo-application-stepswitch
-    summary: 'Kazoo core application'
-    description: |
-      Provides carrier management and selection for upstream routing
-    app_name: stepswitch
-    license: 'MPL 2.0'
-    group: Productivity/Telephony
-    url: 'https://2600hz.org/'
-    vendor: 2600Hz
-metapackage:
-  -
-    name: meta-kazoo-applications
-    type: required
-    branch: '5.3'
-    package: kazoo-application-stepswitch
-dependencies: null
+version: 2.1
+orbs:
+  kazoo: official-2600hz/kazoo@0.3.1
+workflows:
+  version: 2
+  build_branch:
+    jobs:
+      -
+        kazoo/build-preparation:
+          context: Private-Builds
+          name: 'preparation-<< matrix.platform >>'
+          target-type: kapp
+          platform: '<< matrix.platform >>'
+          matrix:
+            parameters:
+              platform: [centos-7]
+      -
+        kazoo/build:
+          context: Private-Builds
+          name: 'beams-<< matrix.platform >>'
+          platform: '<< matrix.platform >>'
+          matrix:
+            parameters:
+              platform: [centos-7]
+          requires:
+            - 'preparation-<< matrix.platform >>'
+      -
+        kazoo/eunit-tests:
+          context: Private-Builds
+          requires:
+            - preparation-centos-7
+      -
+        kazoo/code-checks:
+          requires:
+            - beams-centos-7
+      -
+        kazoo/docs:
+          requires:
+            - beams-centos-7
+      -
+        kazoo/analyze:
+          requires:
+            - beams-centos-7
+      -
+        kazoo/integration-test:
+          requires:
+            - beams-centos-7
+      -
+        kazoo/build-centos7:
+          context: Private-Builds
+          target-type: kapp
+          requires:
+            - beams-centos-7
+  build_release:
+    jobs:
+      -
+        kazoo/build-preparation:
+          context: Private-Builds
+          name: 'preparation-<< matrix.platform >>'
+          target-type: kapp
+          platform: '<< matrix.platform >>'
+          matrix:
+            parameters:
+              platform: [centos-7]
+          for-packager: 'true'
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/build:
+          context: Private-Builds
+          name: 'beams-<< matrix.platform >>'
+          platform: '<< matrix.platform >>'
+          matrix:
+            parameters:
+              platform: [centos-7]
+          requires:
+            - 'preparation-<< matrix.platform >>'
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/eunit-tests:
+          context: Private-Builds
+          requires:
+            - preparation-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/code-checks:
+          requires:
+            - beams-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/docs:
+          requires:
+            - beams-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/analyze:
+          requires:
+            - beams-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/integration-test:
+          requires:
+            - beams-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
+      -
+        kazoo/build-centos7:
+          context: Private-Builds
+          target-type: kapp
+          requires:
+            - beams-centos-7
+          filters:
+            tags:
+              only: '/^\d+\.\d+\.\d+(\.\d+)?$/'
+            branches:
+              ignore: '/.*/'
