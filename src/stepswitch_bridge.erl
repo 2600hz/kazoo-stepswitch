@@ -744,13 +744,14 @@ set_emergency_address_meta({Number, OffnetReq}, Props) ->
     AccountDB = kzs_util:format_account_db(kapi_offnet_resource:account_id(OffnetReq)),
     case kz_datamgr:open_doc(AccountDB, Number) of
         {'ok', Doc} ->
-            [{<<"Emergency-Address-Street-1">>, extract_e911_street_address_field(Doc, <<"street_address">>)}
-            ,{<<"Emergency-Address-Street-2">>,  extract_e911_street_address_field(Doc, <<"street_address_extended">>)}
-            ,{<<"Emergency-Address-City">>,  kzd_phone_numbers:e911_locality(Doc)}
+            [{<<"Emergency-Address-City">>,  kzd_phone_numbers:e911_locality(Doc)}
+            ,{<<"Emergency-Address-House-Number">>, kzd_phone_numbers:e911_legacy_data_house_number(Doc)}
             ,{<<"Emergency-Address-Latitude">>, kzd_phone_numbers:e911_latitude(Doc)}
             ,{<<"Emergency-Address-Longitude">>, kzd_phone_numbers:e911_latitude(Doc)}
-            ,{<<"Emergency-Address-Region">>,  kzd_phone_numbers:e911_region(Doc)}
             ,{<<"Emergency-Address-Postal-Code">>,  kzd_phone_numbers:e911_postal_code(Doc)}
+            ,{<<"Emergency-Address-Region">>,  kzd_phone_numbers:e911_region(Doc)}
+            ,{<<"Emergency-Address-Street-1">>, extract_e911_street_address_field(Doc, <<"street_address">>)}
+            ,{<<"Emergency-Address-Street-2">>,  extract_e911_street_address_field(Doc, <<"street_address_extended">>)}
             ,{<<"Emergency-Notfication-Contact-Emails">>, kzd_phone_numbers:e911_notification_contact_emails(Doc)}
             | Props
             ];
