@@ -5,7 +5,7 @@ Stepswitch is the carrier management application, most often used for offnet rou
 
 ## Outbound routing
 
-In KAZOO, a carrier is represented as a "resource" document. These docs can be stored in the "global" pool (the `offnet` database) for all tenants of the cluster to use; or the docs can be stored in a particular account (so called "local" resources) for use by the tenant and/or any sub-accounts if configured to do so. Local resources are part of the BYOC (Bring Your Own Carrier) offering of KAZOO.
+In {% BRAND_NAME %}, a carrier is represented as a "resource" document. These docs can be stored in the "global" pool (the `offnet` database) for all tenants of the cluster to use; or the docs can be stored in a particular account (so called "local" resources) for use by the tenant and/or any sub-accounts if configured to do so. Local resources are part of the BYOC (Bring Your Own Carrier) offering of {% BRAND_NAME %}.
 
 The `resources` callflow action can be used (generally in conjunction with the `no_match` callflow number) to route calls using local or global carriers.
 
