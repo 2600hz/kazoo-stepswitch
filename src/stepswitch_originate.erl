@@ -255,7 +255,6 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Endpoints">>, FmtEndpoints}
       ,{<<"Existing-Call-ID">>, kz_json:get_value(<<"Existing-Call-ID">>, OffnetReq)}
-      ,{<<"Switch-Nodename">>, kz_json:get_value(<<"Switch-Nodename">>, OffnetReq)}
       ,{<<"Fax-Identity-Name">>, kz_json:get_value(<<"Fax-Identity-Name">>, OffnetReq, CIDName)}
       ,{<<"Fax-Identity-Number">>, kz_json:get_value(<<"Fax-Identity-Number">>, OffnetReq, CIDNum)}
       ,{<<"Fax-Timezone">>, kz_json:get_value(<<"Fax-Timezone">>, OffnetReq)}
@@ -274,6 +273,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
       ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+      ,{<<"Switch-Nodename">>, kz_json:get_value(<<"Switch-Nodename">>, OffnetReq)}
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
