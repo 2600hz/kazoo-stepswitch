@@ -273,6 +273,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
       ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+      ,{<<"Switch-Nodename">>, kz_json:get_value(<<"Switch-Nodename">>, OffnetReq)}
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
