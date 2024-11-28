@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2024, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -273,6 +273,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
       ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+      ,{<<"Switch-Nodename">>, kz_json:get_value(<<"Switch-Nodename">>, OffnetReq)}
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
       ,{<<"Continue-After">>, kapi_offnet_resource:continue_after(OffnetReq)}
       ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
