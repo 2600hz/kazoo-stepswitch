@@ -141,20 +141,9 @@ handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}
-           ,#state{call_id=CallId
-                  ,resource_req=OffnetReq
-                  ,request_handler=RequestHandler
-                  }=State
-           ) ->
-    case kapps_call_events:get_event(CallId) of
-        {'ok', CallEvt} ->
-            lager:info("channel died while we were initializing"),
-            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
-        {'error', 'not_found'} ->
-            _ = maybe_bridge(State),
-            {'noreply', State}
-    end;
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
+    _ = maybe_bridge(State),
+    {'noreply', State};
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'bridge_result', Props}, #state{response_queue=ResponseQ}=State) ->
@@ -420,23 +409,16 @@ build_bridge(#state{endpoints=Endpoints
     FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs, DefaultFailOnSingleReject),
 
     BridgeFromURI = bridge_from_uri(Number, OffnetReq),
-    AddCCVs = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
-                                     ,{<<"Account-ID">>, AccountId}
-                                     ,{<<"From-URI">>, BridgeFromURI}
-                                     ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
-                                     ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                                     ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                                     ]),
-    RemoveCCVs = [{<<"Require-Ignore-Early-Media">>, 'null'}
-                 ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
-                 ],
+    UpdateCCVs = props:filter_undefined([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                                        ,{<<"Require-Ignore-Early-Media">>, 'null'}
+                                        ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
+                                        ]),
+    CCVs = kz_json:set_values(UpdateCCVs, ReqCCVs),
 
     NewEndpoints = avoid_privacy_if_emergency_call(IsEmergency, Endpoints),
-    CCVs = kz_json:set_values(AddCCVs ++ RemoveCCVs, ReqCCVs),
     FmtEndpoints = stepswitch_util:format_endpoints(NewEndpoints, Name, Number, OffnetReq),
 
     Realm = kzd_accounts:fetch_realm(AccountId),
-
     {AssertedNumber, AssertedName} = maybe_override_asserted_identity(OffnetReq, {IsEmergency, Number, Name}),
 
     props:filter_undefined(
