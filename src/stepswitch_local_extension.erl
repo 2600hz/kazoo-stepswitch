@@ -335,7 +335,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Resource-Type">>, <<"onnet-termination">>}
                    ,{<<"Account-Cross-Boundary">>, true}
-                ]),
+                   ]),
 
     Endpoint = kz_json:from_list(
                  [{<<"Caller-ID-Name">>, CIDName}
