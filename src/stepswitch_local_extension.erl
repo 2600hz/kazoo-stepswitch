@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2024, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -115,23 +115,11 @@ handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}
-           ,#state{call_id=CallId
-                  ,resource_req=OffnetReq
-                  ,request_handler=RequestHandler
-                  ,control_queue=ControlQ
-                  }=State
-           ) ->
-    case kapps_call_events:get_event(CallId) of
-        {'ok', CallEvt} ->
-            lager:info("channel died while we were initializing"),
-            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
-        {'error', 'not_found'} ->
-            Payload = build_local_extension(State),
-            'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
-            lager:debug("sent local extension command to ~s", [ControlQ]),
-            {'noreply', State}
-    end;
+handle_cast({'gen_listener', {'is_consuming', 'true'}} , #state{control_queue=ControlQ}=State) ->
+    Payload = build_local_extension(State),
+    'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
+    lager:debug("sent local extension command to ~s", [ControlQ]),
+    {'noreply', State};
 handle_cast({'local_extension_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'local_extension_result', Props}, #state{response_queue=ResponseQ}=State) ->
@@ -310,20 +298,7 @@ build_local_extension(#state{number_props=Props
     CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new()),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
 
-    CCVs = kz_json:set_values([{<<"Account-ID">>, OriginalAccountId}
-                              ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
-                              ,{<<"Ignore-Display-Updates">>, <<"true">>}
-                              ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                              ,{<<"Realm">>, FromRealm}
-                              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
-                              ,{<<"Reseller-ID">>, OriginalResellerId}
-                              ,{<<"Resource-ID">>, AccountId}
-                              ,{<<"Resource-Type">>, <<"onnet-termination">>}
-                              ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
-                              ,{<<"Account-Cross-Boundary">>, true}
-                              ]
-                             ,CCVsOrig
-                             ),
+    CCVs = kz_json:set_values([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}], CCVsOrig),
 
     {AssertedNumber, AssertedName} = stepswitch_bridge:maybe_override_asserted_identity(OffnetReq
                                                                                        ,{'false'
@@ -333,15 +308,15 @@ build_local_extension(#state{number_props=Props
 
     CCVUpdates = kz_json:from_list(
                    [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Realm">>, Realm}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Realm">>, Realm}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
 
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", Realm/binary>>}
 
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-Token">>, <<OriginalAccountId/binary, "@", AccountId/binary>>}
@@ -350,6 +325,16 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
+
+                   ,{<<"Account-ID">>, OriginalAccountId}
+                   ,{<<"Reseller-ID">>, OriginalResellerId}
+                   ,{<<"Realm">>, FromRealm}
+                   ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                   ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
+                   ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                   ,{<<"Resource-ID">>, AccountId}
+                   ,{<<"Resource-Type">>, <<"onnet-termination">>}
+                   ,{<<"Account-Cross-Boundary">>, true}
                    ]),
 
     Endpoint = kz_json:from_list(
