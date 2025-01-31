@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2024, 2600Hz
+%%% @copyright (C) 2013-2025, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -412,6 +412,9 @@ build_bridge(#state{endpoints=Endpoints
     UpdateCCVs = props:filter_undefined([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
                                         ,{<<"Require-Ignore-Early-Media">>, 'null'}
                                         ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
+                                        ,{<<"Account-ID">>, AccountId}
+                                        ,{<<"From-URI">>, BridgeFromURI}
+                                        ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                                         ]),
     CCVs = kz_json:set_values(UpdateCCVs, ReqCCVs),
 
@@ -448,6 +451,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
       ,{<<"SIP-Invite-Contact-User">>, Number}
+      ,{<<"Account-ID">>, AccountId}
       ,{?KEY_SIP_DIVERSIONS, kapi_offnet_resource:sip_diversions(OffnetReq)}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
