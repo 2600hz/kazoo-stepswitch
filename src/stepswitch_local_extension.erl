@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2024, 2600Hz
+%%% @copyright (C) 2013-2025, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -384,6 +384,8 @@ build_local_extension(#state{number_props=Props
       ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Pickup-Forbidden">>, kapi_offnet_resource:pickup_forbidden(OffnetReq)}
+      ,{<<"Pickup-Hangup-On-Forbidden">>, kapi_offnet_resource:pickup_hangup_on_forbidden(OffnetReq)}
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
