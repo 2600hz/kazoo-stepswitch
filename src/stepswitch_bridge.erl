@@ -447,6 +447,8 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
+      ,{<<"Pickup-Forbidden">>, kapi_offnet_resource:pickup_forbidden(OffnetReq)}
+      ,{<<"Pickup-Hangup-On-Forbidden">>, kapi_offnet_resource:pickup_hangup_on_forbidden(OffnetReq)}
       ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
       ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}

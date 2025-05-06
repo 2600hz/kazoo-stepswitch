@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2023, 2600Hz
+%%% @copyright (C) 2011-2025, 2600Hz
 %%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -221,6 +221,8 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"Invite-Format">>, <<"loopback">>}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Pickup-Forbidden">>, kapi_offnet_resource:pickup_forbidden(OffnetReq)}
+      ,{<<"Pickup-Hangup-On-Forbidden">>, kapi_offnet_resource:pickup_hangup_on_forbidden(OffnetReq)}
       ,{<<"Route">>, Number}
       ,{<<"To-DID">>, Number}
       ,{<<"To-Realm">>, TargetRealm}
