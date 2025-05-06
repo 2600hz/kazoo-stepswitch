@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2024, 2600Hz
+%%% @copyright (C) 2013-2025, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -270,6 +270,8 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Outbound-Callee-ID-Number">>, kz_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetReq)}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Pickup-Forbidden">>, kapi_offnet_resource:pickup_forbidden(OffnetReq)}
+      ,{<<"Pickup-Hangup-On-Forbidden">>, kapi_offnet_resource:pickup_hangup_on_forbidden(OffnetReq)}
       ,{<<"Presence-ID">>, kz_json:get_value(<<"Presence-ID">>, OffnetReq)}
       ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
