@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2025, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -308,14 +308,14 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
 get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get(AccountId)),
+    Resources = filter_resources(OffnetJObj, Flags, get(AccountId)),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec get_global_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get()),
+    Resources = filter_resources(OffnetJObj, Flags, get()),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec sort_endpoints(endpoints()) -> endpoints().
@@ -465,7 +465,28 @@ search_gateway(_, _, _, _) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
+-spec filter_resources(kapi_offnet_resource:req(), kz_term:ne_binaries(), resources()) ->
+          resources().
+filter_resources(OffnetJObj, Flags, Resources) ->
+    Cat = ?SS_CONFIG_CAT,
+    Key = <<"force_reseller_outbound_flags">>,
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    case kz_term:is_true(kapps_account_config:get_from_reseller(AccountId, Cat, Key, 'false')) of
+        'true' ->
+            filter_resources(get_reseller_flags(AccountId) ++ Flags, Resources);
+        'false' ->
+            Flags
+    end.
+
+-spec get_reseller_flags(kz_term:ne_binary()) -> kz_term:ne_binaries().
+get_reseller_flags(AccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' ->
+            [];
+        'false' ->
+            kapps_account_config:get_ne_binaries(AccountId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
+    end.
+    
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
     [Resource
@@ -474,11 +495,11 @@ filter_resources([], Resources) ->
     ];
 filter_resources(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
-    filter_resources(Flags, Resources, []).
+    filter_resources1(Flags, Resources, []).
 
--spec filter_resources(kz_term:ne_binaries(), resources(), resources()) -> resources().
-filter_resources(_, [], Filtered) -> Filtered;
-filter_resources(Flags, [Resource|Resources], Filtered) ->
+-spec filter_resources1(kz_term:ne_binaries(), resources(), resources()) -> resources().
+filter_resources1(_, [], Filtered) -> Filtered;
+filter_resources1(Flags, [Resource|Resources], Filtered) ->
     case resource_has_flags(Flags, Resource) of
         'false' -> filter_resources(Flags, Resources, Filtered);
         'true' -> filter_resources(Flags, Resources, [Resource | Filtered])
