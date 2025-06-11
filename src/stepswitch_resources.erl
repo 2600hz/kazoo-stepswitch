@@ -275,7 +275,7 @@ is_test_number(Number, ResourceId) ->
             maybe_match_test_number(Rules, Number)
     end.
 
--spec maybe_match_test_number([re:mp()] , kz_term:ne_binary()) -> boolean().
+-spec maybe_match_test_number(rules() , kz_term:ne_binary()) -> boolean().
 maybe_match_test_number([], _) -> 'false';
 maybe_match_test_number([Rule | Rules], Number) ->
     case re:run(Number, Rule) of
@@ -486,7 +486,7 @@ get_reseller_flags(AccountId) ->
         'false' ->
             kapps_account_config:get_ne_binaries(AccountId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
     end.
-    
+
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
     [Resource
@@ -662,7 +662,7 @@ add_proxy(Endpoint, {Zone, IP}) ->
               ],
     kz_json:set_values(Updates ,Endpoint).
 
--spec filter_resource_by_rules(kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary(), re:mp()) ->
+-spec filter_resource_by_rules(kz_term:ne_binary(), kz_term:ne_binary(), rules(), kz_term:ne_binary(), rules()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
@@ -674,7 +674,7 @@ filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
             filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match)
     end.
 
--spec filter_resource_by_match(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary()) ->
+-spec filter_resource_by_match(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
@@ -697,7 +697,7 @@ update_ccvs(Endpoint, Updates) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
 
--spec evaluate_rules(re:mp(), kz_term:ne_binary()) ->
+-spec evaluate_rules(rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 evaluate_rules([], _) -> {'error', 'no_match'};
@@ -714,7 +714,7 @@ evaluate_rules([Rule|Rules], Number) ->
             evaluate_rules(Rules, Number)
     end.
 
--spec evaluate_cid_rules(re:mp(), kz_term:ne_binary()) ->
+-spec evaluate_cid_rules(rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
           {'error', 'no_match'}.
