@@ -477,7 +477,7 @@ filter_resources(OffnetJObj, Resources) ->
         'true' ->
             filter_resources_by_flags(get_reseller_flags(AccountId) ++ Flags, Resources);
         'false' ->
-            Flags
+            filter_resources_by_flags(Flags, Resources)
     end.
 
 -spec get_reseller_flags(kz_term:ne_binary()) -> kz_term:ne_binaries().
