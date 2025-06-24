@@ -106,6 +106,7 @@
 -define(DEFAULT_WEIGHT,
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3)).
 -define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
+-define(DIRECT_RESELLER_ID_EXPANDABLE_MACRO, <<"{direct_reseller_id}">>).
 
 -define(SHOULD_MERGE_RESELLER_FLAGS(AccountId)
        ,kapps_account_config:get_from_reseller(AccountId, ?SS_CONFIG_CAT, <<"force_reseller_outbound_flags">>, 'false')
@@ -772,6 +773,9 @@ gateway_to_endpoint(DestinationNumber
            ],
     CCVs = kz_json:set_values(KVs, GatewayCCVs),
 
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    NewSipHeaders = maybe_expand_sip_header_macro_logic(AccountId, SipHeaders),
+
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
@@ -785,7 +789,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Auth-User">>, Username}
         ,{<<"Auth-Password">>, Password}
         ,{<<"Auth-Realm">>, AuthRealm}
-        ,{<<"Custom-SIP-Headers">>, SipHeaders}
+        ,{<<"Custom-SIP-Headers">>, NewSipHeaders}
         ,{<<"SIP-Interface">>, SipInterface}
         ,{<<"Endpoint-Type">>, EndpointType}
         ,{<<"Endpoint-Options">>, EndpointOptions}
@@ -808,6 +812,39 @@ gateway_to_endpoint(DestinationNumber
         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
+-spec maybe_expand_sip_header_macro_logic(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+maybe_expand_sip_header_macro_logic(AccountId, SipHeaders) ->
+    Routines = [{fun expand_direct_reseller_id/2, AccountId}],
+    kz_json:exec(Routines, SipHeaders).
+
+-spec expand_direct_reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+expand_direct_reseller_id(AccountId, SIPHeaders) ->
+    DirectResellerId = case kz_services_reseller:is_reseller(AccountId) of
+                           'true' -> AccountId;
+                           'false' -> kz_services_reseller:get_id(AccountId)
+                       end,
+    replace_direct_reseller_macro(SIPHeaders, DirectResellerId).
+
+-spec replace_direct_reseller_macro(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
+replace_direct_reseller_macro(SIPHeaders, DirectResellerId) ->
+    {_, UpdatedSIPHeaders} = lists:foldl(fun direct_reseller_id_macro_kv/2
+                                        ,{DirectResellerId, []}
+                                        ,kz_json:to_proplist(SIPHeaders)
+                                        ),
+    kz_json:from_list(UpdatedSIPHeaders).
+
+-spec direct_reseller_id_macro_kv(tuple(), {kz_term:api_binary(), kz_term:proplist()}) ->
+          {kz_term:api_binary(), kz_term:proplist()}.
+direct_reseller_id_macro_kv({_FieldName, ?DIRECT_RESELLER_ID_EXPANDABLE_MACRO}
+                           ,{'undefined', Acc}
+                           ) ->
+    {'undefined', Acc};
+direct_reseller_id_macro_kv({FieldName, ?DIRECT_RESELLER_ID_EXPANDABLE_MACRO}
+                           ,{DirectResellerId, Acc}
+                           ) ->
+    {DirectResellerId, [{FieldName, DirectResellerId} | Acc]};
+direct_reseller_id_macro_kv(SIPHeader, {DirectResellerId, Acc}) ->
+    {DirectResellerId, [SIPHeader|Acc]}.
 
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
