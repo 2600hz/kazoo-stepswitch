@@ -108,6 +108,10 @@
 -define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
 -define(DIRECT_RESELLER_ID_EXPANDABLE_MACRO, <<"{direct_reseller_id}">>).
 
+-define(SHOULD_MERGE_RESELLER_FLAGS(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?SS_CONFIG_CAT, <<"force_reseller_outbound_flags">>, 'false')
+       ).
+
 -record(gateway, {server :: kz_term:api_binary()
                  ,port :: kz_term:api_integer()
                  ,realm :: kz_term:api_binary()
@@ -308,15 +312,13 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
 -spec get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
-    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get(AccountId)),
+    Resources = filter_resources(OffnetJObj, get(AccountId)),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec get_global_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
-    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get()),
+    Resources = filter_resources(OffnetJObj, get()),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec sort_endpoints(endpoints()) -> endpoints().
@@ -466,23 +468,43 @@ search_gateway(_, _, _, _) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
-filter_resources([], Resources) ->
+-spec filter_resources(kapi_offnet_resource:req(), resources()) ->
+          resources().
+filter_resources(OffnetJObj, Resources) ->
+    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    case kz_term:is_true(?SHOULD_MERGE_RESELLER_FLAGS(AccountId)) of
+        'true' ->
+            filter_resources_by_flags(get_reseller_flags(AccountId) ++ Flags, Resources);
+        'false' ->
+            filter_resources_by_flags(Flags, Resources)
+    end.
+
+-spec get_reseller_flags(kz_term:ne_binary()) -> kz_term:ne_binaries().
+get_reseller_flags(AccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' ->
+            [];
+        'false' ->
+            kapps_account_config:get_ne_binaries(AccountId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
+    end.
+
+filter_resources_by_flags([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
     [Resource
      || #resrc{require_flags=RequireFlags}=Resource <- Resources,
         not RequireFlags
     ];
-filter_resources(Flags, Resources) ->
+filter_resources_by_flags(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
-    filter_resources(Flags, Resources, []).
+    filter_resources_by_flags(Flags, Resources, []).
 
--spec filter_resources(kz_term:ne_binaries(), resources(), resources()) -> resources().
-filter_resources(_, [], Filtered) -> Filtered;
-filter_resources(Flags, [Resource|Resources], Filtered) ->
+-spec filter_resources_by_flags(kz_term:ne_binaries(), resources(), resources()) -> resources().
+filter_resources_by_flags(_, [], Filtered) -> Filtered;
+filter_resources_by_flags(Flags, [Resource|Resources], Filtered) ->
     case resource_has_flags(Flags, Resource) of
-        'false' -> filter_resources(Flags, Resources, Filtered);
-        'true' -> filter_resources(Flags, Resources, [Resource | Filtered])
+        'false' -> filter_resources_by_flags(Flags, Resources, Filtered);
+        'true' -> filter_resources_by_flags(Flags, Resources, [Resource | Filtered])
     end.
 
 -spec resource_has_flags(kz_term:ne_binaries(), resource()) -> boolean().
