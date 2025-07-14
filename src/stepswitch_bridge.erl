@@ -571,7 +571,7 @@ default_emergency_number(Requested) ->
     end.
 
 -spec contains_emergency_endpoints(stepswitch_resources:endpoints()) -> boolean().
-contains_emergency_endpoints(_Endpoints) ->
+contains_emergency_endpoints(Endpoints) ->
     lists:any(fun is_emergency_endpoint/1, Endpoints).
 
 -spec is_emergency_endpoint(boolean() | stepswitch_resources:endpoint()) -> boolean().
@@ -867,32 +867,32 @@ get_emergency_address({Number, OffnetReq}) ->
     NumE911 = get_number_emergency_address(Number, OffnetReq),
     UserE911 = get_user_emergency_address(OffnetReq),
     {_, ExtAddr} = lists:foldl(fun(E, AccIn) ->
-            {Done, _} = AccIn,
-            case has_e911_extended_address(E) andalso Done == 'false' of
-                'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
-                'false' -> AccIn
-            end
-        end,
-        {'false', []}, [DevE911, UserE911, NumE911]),
-    
+                                       {Done, _} = AccIn,
+                                       case has_e911_extended_address(E) andalso Done == 'false' of
+                                           'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
+                                           'false' -> AccIn
+                                       end
+                               end,
+                               {'false', []}, [DevE911, UserE911, NumE911]),
+
     {_, Addr} = lists:foldl(fun(E, AccIn) ->
-            {Done, _} = AccIn,
-            case has_e911_address(E) andalso Done == 'false' of
-                'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
-                'false' -> AccIn
-            end
-        end,
-        {'false', []}, [DevE911, UserE911, NumE911]),
+                                    {Done, _} = AccIn,
+                                    case has_e911_address(E) andalso Done == 'false' of
+                                        'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
+                                        'false' -> AccIn
+                                    end
+                            end,
+                            {'false', []}, [DevE911, UserE911, NumE911]),
     Addr ++ ExtAddr.
-    
+
 set_e911_address_meta(E911) ->
     [
-        {<<"Emergency-Address-City">>,  kz_json:get_binary_value(<<"locality">>, E911)}
-        ,{<<"Emergency-Address-Latitude">>, kz_json:get_binary_value(<<"latitude">>, E911)}
-        ,{<<"Emergency-Address-Longitude">>, kz_json:get_binary_value(<<"longitude">>, E911)}
-        ,{<<"Emergency-Address-Region">>,  kz_json:get_binary_value(<<"region">>, E911)}
-        ,{<<"Emergency-Address-Postal-Code">>,  kz_json:get_binary_value(<<"postal_code">>, E911)}
-        ,{<<"Emergency-Notfication-Contact-Emails">>, kz_json:get_binary_value(<<"notification_contact_emails">>, E911)}
+     {<<"Emergency-Address-City">>,  kz_json:get_binary_value(<<"locality">>, E911)}
+    ,{<<"Emergency-Address-Latitude">>, kz_json:get_binary_value(<<"latitude">>, E911)}
+    ,{<<"Emergency-Address-Longitude">>, kz_json:get_binary_value(<<"longitude">>, E911)}
+    ,{<<"Emergency-Address-Region">>,  kz_json:get_binary_value(<<"region">>, E911)}
+    ,{<<"Emergency-Address-Postal-Code">>,  kz_json:get_binary_value(<<"postal_code">>, E911)}
+    ,{<<"Emergency-Notfication-Contact-Emails">>, kz_json:get_binary_value(<<"notification_contact_emails">>, E911)}
     ].
 
 -spec get_device_emergency_address(kapi_offnet_resource:req()) -> kz_json:object().
@@ -936,11 +936,11 @@ get_account_doc(AccountDB, DocId) ->
 
 has_e911_extended_address(E911) ->
     ExtAddr = kz_json:get_binary_value(<<"street_address_extended">>, E911),
-    ExtAddr =/= <<"">> andalso ExtAddr =/= undefined.
+    ExtAddr =/= <<"">> andalso ExtAddr =/= 'undefined'.
 
 has_e911_address(E911) ->
     Addr = kz_json:get_binary_value(<<"street_address">>, E911),
-    Addr =/= <<"">> andalso Addr =/= undefined.
+    Addr =/= <<"">> andalso Addr =/= 'undefined'.
 
 build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     JObj = kz_json:from_list(Addr),
@@ -950,12 +950,12 @@ build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     Region = kz_json:get_binary_value(<<"Emergency-Address-Region">>, JObj, <<"">>),
     Postcode = kz_json:get_binary_value(<<"Emergency-Address-Postal-Code">>, JObj, <<"">>),
     CCVs = case Ext =/= <<"">> orelse Street =/= <<"">> of
-        'true' -> [
-                {<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>},
-                {<<"sip_h_Geolocation">>, build_geolocation(Ext, Street, City, Region, Postcode)}
-            ];
-        'false' -> []
-    end,
+               'true' -> [
+                          {<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>},
+                          {<<"sip_h_Geolocation">>, build_geolocation(Ext, Street, City, Region, Postcode)}
+                         ];
+               'false' -> []
+           end,
     lager:debug("geolocation ccvs is ~p", [CCVs]),
     CCVs.
 
