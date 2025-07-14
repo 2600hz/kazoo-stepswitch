@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2023, 2600Hz
+%%% @copyright (C) 2013-2025, 2600Hz
 %%% @doc
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -106,6 +106,11 @@
 -define(DEFAULT_WEIGHT,
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3)).
 -define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
+-define(DIRECT_RESELLER_ID_EXPANDABLE_MACRO, <<"{direct_reseller_id}">>).
+
+-define(SHOULD_MERGE_RESELLER_FLAGS(AccountId)
+       ,kapps_account_config:get_from_reseller(AccountId, ?SS_CONFIG_CAT, <<"force_reseller_outbound_flags">>, 'false')
+       ).
 
 -record(gateway, {server :: kz_term:api_binary()
                  ,port :: kz_term:api_integer()
@@ -275,7 +280,7 @@ is_test_number(Number, ResourceId) ->
             maybe_match_test_number(Rules, Number)
     end.
 
--spec maybe_match_test_number([re:mp()] , kz_term:ne_binary()) -> boolean().
+-spec maybe_match_test_number(rules() , kz_term:ne_binary()) -> boolean().
 maybe_match_test_number([], _) -> 'false';
 maybe_match_test_number([Rule | Rules], Number) ->
     case re:run(Number, Rule) of
@@ -307,15 +312,13 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
 -spec get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
-    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get(AccountId)),
+    Resources = filter_resources(OffnetJObj, get(AccountId)),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec get_global_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
-    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    Resources = filter_resources(Flags, get()),
+    Resources = filter_resources(OffnetJObj, get()),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec sort_endpoints(endpoints()) -> endpoints().
@@ -465,23 +468,43 @@ search_gateway(_, _, _, _) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_resources(kz_term:ne_binaries(), resources()) -> resources().
-filter_resources([], Resources) ->
+-spec filter_resources(kapi_offnet_resource:req(), resources()) ->
+          resources().
+filter_resources(OffnetJObj, Resources) ->
+    Flags = kapi_offnet_resource:flags(OffnetJObj, []),
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    case kz_term:is_true(?SHOULD_MERGE_RESELLER_FLAGS(AccountId)) of
+        'true' ->
+            filter_resources_by_flags(get_reseller_flags(AccountId) ++ Flags, Resources);
+        'false' ->
+            filter_resources_by_flags(Flags, Resources)
+    end.
+
+-spec get_reseller_flags(kz_term:ne_binary()) -> kz_term:ne_binaries().
+get_reseller_flags(AccountId) ->
+    case kz_services_reseller:is_reseller(AccountId) of
+        'true' ->
+            [];
+        'false' ->
+            kapps_account_config:get_ne_binaries(AccountId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
+    end.
+
+filter_resources_by_flags([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
     [Resource
      || #resrc{require_flags=RequireFlags}=Resource <- Resources,
         not RequireFlags
     ];
-filter_resources(Flags, Resources) ->
+filter_resources_by_flags(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
-    filter_resources(Flags, Resources, []).
+    filter_resources_by_flags(Flags, Resources, []).
 
--spec filter_resources(kz_term:ne_binaries(), resources(), resources()) -> resources().
-filter_resources(_, [], Filtered) -> Filtered;
-filter_resources(Flags, [Resource|Resources], Filtered) ->
+-spec filter_resources_by_flags(kz_term:ne_binaries(), resources(), resources()) -> resources().
+filter_resources_by_flags(_, [], Filtered) -> Filtered;
+filter_resources_by_flags(Flags, [Resource|Resources], Filtered) ->
     case resource_has_flags(Flags, Resource) of
-        'false' -> filter_resources(Flags, Resources, Filtered);
-        'true' -> filter_resources(Flags, Resources, [Resource | Filtered])
+        'false' -> filter_resources_by_flags(Flags, Resources, Filtered);
+        'true' -> filter_resources_by_flags(Flags, Resources, [Resource | Filtered])
     end.
 
 -spec resource_has_flags(kz_term:ne_binaries(), resource()) -> boolean().
@@ -641,7 +664,7 @@ add_proxy(Endpoint, {Zone, IP}) ->
               ],
     kz_json:set_values(Updates ,Endpoint).
 
--spec filter_resource_by_rules(kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary(), re:mp()) ->
+-spec filter_resource_by_rules(kz_term:ne_binary(), kz_term:ne_binary(), rules(), kz_term:ne_binary(), rules()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
@@ -653,7 +676,7 @@ filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
             filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match)
     end.
 
--spec filter_resource_by_match(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary()) ->
+-spec filter_resource_by_match(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
@@ -676,7 +699,7 @@ update_ccvs(Endpoint, Updates) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
 
--spec evaluate_rules(re:mp(), kz_term:ne_binary()) ->
+-spec evaluate_rules(rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', 'no_match'}.
 evaluate_rules([], _) -> {'error', 'no_match'};
@@ -693,7 +716,7 @@ evaluate_rules([Rule|Rules], Number) ->
             evaluate_rules(Rules, Number)
     end.
 
--spec evaluate_cid_rules(re:mp(), kz_term:ne_binary()) ->
+-spec evaluate_cid_rules(rules(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()} |
           {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
           {'error', 'no_match'}.
@@ -750,6 +773,9 @@ gateway_to_endpoint(DestinationNumber
            ],
     CCVs = kz_json:set_values(KVs, GatewayCCVs),
 
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    NewSipHeaders = maybe_expand_sip_header_macro_logic(AccountId, SipHeaders),
+
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
@@ -763,7 +789,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Auth-User">>, Username}
         ,{<<"Auth-Password">>, Password}
         ,{<<"Auth-Realm">>, AuthRealm}
-        ,{<<"Custom-SIP-Headers">>, SipHeaders}
+        ,{<<"Custom-SIP-Headers">>, NewSipHeaders}
         ,{<<"SIP-Interface">>, SipInterface}
         ,{<<"Endpoint-Type">>, EndpointType}
         ,{<<"Endpoint-Options">>, EndpointOptions}
@@ -786,6 +812,39 @@ gateway_to_endpoint(DestinationNumber
         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
+-spec maybe_expand_sip_header_macro_logic(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+maybe_expand_sip_header_macro_logic(AccountId, SipHeaders) ->
+    Routines = [{fun expand_direct_reseller_id/2, AccountId}],
+    kz_json:exec(Routines, SipHeaders).
+
+-spec expand_direct_reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+expand_direct_reseller_id(AccountId, SIPHeaders) ->
+    DirectResellerId = case kz_services_reseller:is_reseller(AccountId) of
+                           'true' -> AccountId;
+                           'false' -> kz_services_reseller:get_id(AccountId)
+                       end,
+    replace_direct_reseller_macro(SIPHeaders, DirectResellerId).
+
+-spec replace_direct_reseller_macro(kz_json:object(), kz_term:api_binary()) -> kz_json:object().
+replace_direct_reseller_macro(SIPHeaders, DirectResellerId) ->
+    {_, UpdatedSIPHeaders} = lists:foldl(fun direct_reseller_id_macro_kv/2
+                                        ,{DirectResellerId, []}
+                                        ,kz_json:to_proplist(SIPHeaders)
+                                        ),
+    kz_json:from_list(UpdatedSIPHeaders).
+
+-spec direct_reseller_id_macro_kv(tuple(), {kz_term:api_binary(), kz_term:proplist()}) ->
+          {kz_term:api_binary(), kz_term:proplist()}.
+direct_reseller_id_macro_kv({_FieldName, ?DIRECT_RESELLER_ID_EXPANDABLE_MACRO}
+                           ,{'undefined', Acc}
+                           ) ->
+    {'undefined', Acc};
+direct_reseller_id_macro_kv({FieldName, ?DIRECT_RESELLER_ID_EXPANDABLE_MACRO}
+                           ,{DirectResellerId, Acc}
+                           ) ->
+    {DirectResellerId, [{FieldName, DirectResellerId} | Acc]};
+direct_reseller_id_macro_kv(SIPHeader, {DirectResellerId, Acc}) ->
+    {DirectResellerId, [SIPHeader|Acc]}.
 
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
 sip_invite_parameters(Gateway, OffnetJObj) ->
