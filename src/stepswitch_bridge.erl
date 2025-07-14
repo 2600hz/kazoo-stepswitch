@@ -46,6 +46,7 @@
                ,queue :: kz_term:api_binary()
                ,timeout :: kz_term:api_reference()
                ,call_id :: kz_term:api_binary()
+               ,e911_addr :: kz_term:proplist()
                }).
 -type state() :: #state{}.
 
@@ -120,6 +121,7 @@ init([Endpoints, OffnetReq]) ->
                          ,response_queue=kapi_offnet_resource:server_id(OffnetReq)
                          ,timeout=erlang:send_after(120000, self(), 'bridge_timeout')
                          ,call_id=kapi_offnet_resource:call_id(OffnetReq)
+                         ,e911_addr=[]
                          }}
     end.
 
@@ -350,10 +352,11 @@ maybe_deny_emergency_bridge(#state{resource_req=OffnetReq}=State, 'undefined', N
 maybe_deny_emergency_bridge(#state{control_queue=ControlQ
                                   ,endpoints=Endpoints
                                   }=State, Number, Name) ->
-    _ = send_emergency_bridge_notification(Number, State),
+    StateNew = get_e911_addr(Number, State),
+    _ = maybe_send_emergency_bridge_notification(Number, StateNew),
     UpdatedEndpoints = update_endpoints_emergency_cid(Endpoints, Number, Name),
     kapi_dialplan:publish_command(ControlQ
-                                 ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name, 'true')
+                                 ,build_bridge(StateNew#state{endpoints=UpdatedEndpoints}, Number, Name, 'true')
                                  ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
@@ -392,7 +395,7 @@ outbound_flags(OffnetReq) ->
 build_bridge(#state{endpoints=Endpoints
                    ,resource_req=OffnetReq
                    ,queue=Q
-                   }
+                   }=State
             ,Number
             ,Name
             ,IsEmergency
@@ -409,13 +412,14 @@ build_bridge(#state{endpoints=Endpoints
     FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs, DefaultFailOnSingleReject),
 
     BridgeFromURI = bridge_from_uri(Number, OffnetReq),
-    UpdateCCVs = props:filter_undefined([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                                        ,{<<"Require-Ignore-Early-Media">>, 'null'}
-                                        ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
-                                        ,{<<"Account-ID">>, AccountId}
-                                        ,{<<"From-URI">>, BridgeFromURI}
-                                        ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                                        ]),
+    UpdateCCVs = [{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                 ,{<<"Require-Ignore-Early-Media">>, 'null'}
+                 ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"From-URI">>, BridgeFromURI}
+                 ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
+                 | build_geolocation_ccvs(State)
+                 ],
     CCVs = kz_json:set_values(UpdateCCVs, ReqCCVs),
 
     NewEndpoints = avoid_privacy_if_emergency_call(IsEmergency, Endpoints),
@@ -685,17 +689,31 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
                                       ),
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
+maybe_send_emergency_bridge_notification(Num, #state{resource_req=OffnetReq}=State) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
+
+    AccountDoc = get_doc(AccountId, AccountId),
+    case kzd_accounts:notifications_emergency_enabled(AccountDoc, 'false') of
+        'true' ->
+            lager:info("emergency notification is enabled on account ~s", [AccountId]),
+            send_emergency_bridge_notification(Num, State);
+        'false' ->
+            lager:info("emergency notification is disabled on account ~s", [AccountId])
+    end.
+
 -spec send_emergency_bridge_notification(kz_term:ne_binary(), state()) -> 'ok'.
 send_emergency_bridge_notification(Number, #state{resource_req=OffnetReq}=State) ->
     Setters = [{fun set_emergency_call_meta/2, {Number, State}}
               ,{fun set_emergency_device_meta/2, OffnetReq}
-              ,{fun set_emergency_address_meta/2, {Number, OffnetReq}}
+              ,{fun set_emergency_address/2, State}
               ,{fun set_emergency_user_meta/2, OffnetReq}
               ,{fun set_default_headers/2, OffnetReq}
               ],
-
     Props = lists:foldl(fun({F, O}, A) -> F(O, A) end, [], Setters),
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_emergency_bridge/1).
+
+set_emergency_address(#state{e911_addr=Addr}, Props) ->
+    Props ++ Addr.
 
 -spec set_default_headers(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
 set_default_headers(_OffnetReq, Props) ->
@@ -740,25 +758,6 @@ device_name(<<AccountId/binary>>, <<DeviceId/binary>>) ->
 device_name(_AccountId, _DeviceId) ->
     lager:info("no account id(~s) or device id(~s)", [_AccountId, _DeviceId]),
     'undefined'.
-
--spec set_emergency_address_meta({kz_term:ne_binary(), kapi_offnet_resource:req()}, kz_term:proplist()) -> kz_term:proplist().
-set_emergency_address_meta({Number, OffnetReq}, Props) ->
-    AccountDB = kzs_util:format_account_db(kapi_offnet_resource:account_id(OffnetReq)),
-    case kz_datamgr:open_doc(AccountDB, Number) of
-        {'ok', Doc} ->
-            [{<<"Emergency-Address-City">>,  kzd_phone_numbers:e911_locality(Doc)}
-            ,{<<"Emergency-Address-House-Number">>, kzd_phone_numbers:e911_legacy_data_house_number(Doc)}
-            ,{<<"Emergency-Address-Latitude">>, kzd_phone_numbers:e911_latitude(Doc)}
-            ,{<<"Emergency-Address-Longitude">>, kzd_phone_numbers:e911_latitude(Doc)}
-            ,{<<"Emergency-Address-Postal-Code">>,  kzd_phone_numbers:e911_postal_code(Doc)}
-            ,{<<"Emergency-Address-Region">>,  kzd_phone_numbers:e911_region(Doc)}
-            ,{<<"Emergency-Address-Street-1">>, extract_e911_street_address_field(Doc, <<"street_address">>)}
-            ,{<<"Emergency-Address-Street-2">>,  extract_e911_street_address_field(Doc, <<"street_address_extended">>)}
-            ,{<<"Emergency-Notfication-Contact-Emails">>, kzd_phone_numbers:e911_notification_contact_emails(Doc)}
-            | Props
-            ];
-        {'error', _} -> Props
-    end.
 
 -spec maybe_emergency_test_call(state()) -> boolean().
 maybe_emergency_test_call(#state{endpoints=Endpoints
@@ -886,3 +885,154 @@ maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
                               ,Endpoint
                               )
     end.
+
+get_e911_addr(Number, #state{resource_req=OffnetReq}=State) ->
+    Addr = get_emergency_address({Number, OffnetReq}),
+    State#state{e911_addr = props:filter_undefined(Addr)}.
+
+get_emergency_address({Number, OffnetReq}) ->
+    DevE911 = get_device_emergency_address(OffnetReq),
+    NumE911 = get_number_emergency_address(Number, OffnetReq),
+    UserE911 = get_user_emergency_address(OffnetReq),
+
+    ExtAddr = lists:foldl(fun street_address_two/2
+                         ,[]
+                         ,[DevE911, UserE911, NumE911]
+                         ),
+
+    Addr = lists:foldl(fun street_address_one/2
+                      ,[]
+                      ,[DevE911, UserE911, NumE911]
+                      ),
+
+    Addr ++ ExtAddr.
+
+street_address_one(E, []) ->
+    case has_e911_address(E) of
+        'false' -> [];
+        'true' ->
+            [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}
+            | set_e911_address_meta(E)
+            ]
+    end;
+street_address_one(_E, Acc) -> Acc.
+
+street_address_two(E, []) ->
+    case has_e911_extended_address(E) of
+        'false' -> [];
+        'true' ->
+            [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]
+    end;
+street_address_two(_E, Acc) -> Acc.
+
+set_e911_address_meta(E911) ->
+    [{<<"Emergency-Address-City">>, kz_json:get_binary_value(<<"locality">>, E911)}
+    ,{<<"Emergency-Address-House-Number">>, kz_json:get_binary_value(<<"house_number">>, E911)}
+    ,{<<"Emergency-Address-Latitude">>, kz_json:get_binary_value(<<"latitude">>, E911)}
+    ,{<<"Emergency-Address-Longitude">>, kz_json:get_binary_value(<<"longitude">>, E911)}
+    ,{<<"Emergency-Address-Region">>,  kz_json:get_binary_value(<<"region">>, E911)}
+    ,{<<"Emergency-Address-Postal-Code">>,  kz_json:get_binary_value(<<"postal_code">>, E911)}
+    ,{<<"Emergency-Notfication-Contact-Emails">>, kz_json:get_binary_value(<<"notification_contact_emails">>, E911)}
+    ].
+
+-spec get_device_emergency_address(kapi_offnet_resource:req()) -> kz_json:object().
+get_device_emergency_address(OffnetReq) ->
+    case kz_json:get_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Authorizing-Type">>], OffnetReq) of
+        <<"device">> ->
+            AccountId = kapi_offnet_resource:account_id(OffnetReq),
+            AuthId = kz_json:get_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Authorizing-ID">>], OffnetReq),
+            DevDoc = get_doc(AccountId, AuthId),
+            format_emergency_address(kzd_devices:addresses(DevDoc, kz_json:new()));
+        _AuthType ->
+            kz_json:new()
+    end.
+
+-spec get_number_emergency_address(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:object().
+get_number_emergency_address(Number, OffnetReq) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
+    NumDoc = get_doc(AccountId, knm_converters:normalize(Number, AccountId)),
+
+    case kz_json:get_ne_binary_value([<<"e911">>, <<"address_id">>], NumDoc) of
+        'undefined' ->
+            kzd_phone_numbers:e911(NumDoc, kz_json:new()),
+            kz_json:from_list([{<<"locality">>, kzd_phone_numbers:e911_locality(NumDoc)}
+                              ,{<<"house_number">>, kzd_phone_numbers:e911_legacy_data_house_number(NumDoc)}
+                              ,{<<"region">>, kzd_phone_numbers:e911_region(NumDoc)}
+                              ,{<<"postal_code">>, kzd_phone_numbers:e911_postal_code(NumDoc)}
+                              ,{<<"street_address_extended">>, extract_e911_street_address_field(NumDoc, <<"street_address_extended">>)}
+                              ,{<<"street_address">>, extract_e911_street_address_field(NumDoc, <<"street_address">>)}
+                              ,{<<"latitude">>, kzd_phone_numbers:e911_latitude(NumDoc)}
+                              ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
+                              ]);
+        AddrId ->
+            AddrDoc = get_doc(AccountId, AddrId),
+            format_emergency_address(AddrDoc)
+    end.
+
+-spec get_user_emergency_address(kapi_offnet_resource:req()) -> kz_json:object().
+get_user_emergency_address(OffnetReq) ->
+    UserId = kz_json:get_ne_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Owner-ID">>], OffnetReq),
+    UserDoc = get_doc(kapi_offnet_resource:account_id(OffnetReq), UserId),
+    format_emergency_address(kzd_users:addresses(UserDoc, kz_json:new())).
+
+get_doc(_AccountId, 'undefined') ->
+    kz_json:new();
+get_doc(AccountId, DocId) ->
+    case kz_datamgr:open_cache_doc(AccountId, DocId) of
+        {'ok', Doc} -> Doc;
+        {'error', _} -> kz_json:new()
+    end.
+
+has_e911_extended_address(E911) ->
+    'undefined' =/= kz_json:get_ne_binary_value(<<"street_address_extended">>, E911).
+
+has_e911_address(E911) ->
+    'undefined' =/= kz_json:get_ne_binary_value(<<"street_address">>, E911).
+
+format_emergency_address(AddrDoc) ->
+    kz_json:from_list([{<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
+                      ,{<<"house_number">>, kzd_addresses:emergency_house_number(AddrDoc)}
+                      ,{<<"region">>, kzd_addresses:emergency_region(AddrDoc)}
+                      ,{<<"postal_code">>, kzd_addresses:emergency_postal_code(AddrDoc)}
+                      ,{<<"street_address_extended">>, kzd_addresses:emergency_additional_information(AddrDoc)}
+                      ,{<<"street_address">>, create_emergency_street_address(AddrDoc)}
+                      ,{<<"latitude">>, kzd_addresses:emergency_latitude(AddrDoc)}
+                      ,{<<"longitude">>, kzd_addresses:emergency_longitude(AddrDoc)}
+                      ]).
+
+-spec create_emergency_street_address(kz_json:object()) -> binary().
+create_emergency_street_address(Doc) ->
+    Street   = kzd_addresses:emergency_street(Doc),
+    StType   = kzd_addresses:emergency_street_type(Doc),
+    StDir    = kzd_addresses:emergency_street_direction(Doc),
+    StSuff   = kzd_addresses:emergency_street_suffix(Doc),
+
+    Addr = kz_binary:join([Bin || Bin <- [StDir, Street, StSuff, StType], Bin =/= 'undefined'], <<" ">>),
+    kz_binary:strip(Addr).
+
+build_geolocation_ccvs(#state{e911_addr=Addr}) ->
+    JObj = kz_json:from_list(Addr),
+    Ext = kz_json:get_binary_value(<<"Emergency-Address-Street-2">>, JObj, <<>>),
+    House = kz_json:get_binary_value(<<"Emergency-Address-House-Number">>, JObj, <<>>),
+    Street = kz_json:get_binary_value(<<"Emergency-Address-Street-1">>, JObj, <<>>),
+    City = kz_json:get_binary_value(<<"Emergency-Address-City">>, JObj, <<>>),
+    Region = kz_json:get_binary_value(<<"Emergency-Address-Region">>, JObj, <<>>),
+    Postcode = kz_json:get_binary_value(<<"Emergency-Address-Postal-Code">>, JObj, <<>>),
+    build_geo_ccvs(Ext, House, Street, City, Region, Postcode).
+
+build_geo_ccvs(<<>>, _House, <<>>, _City, _Region, _Postcode) ->
+    [];
+build_geo_ccvs(Ext, House, Street, City, Region, Postcode) ->
+    lager:debug("adding geo-location SIP headers"),
+    [{<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>}
+    ,{<<"sip_h_Geolocation">>
+     ,build_geolocation(Ext, <<House/binary, " ", Street/binary>>, City, Region, Postcode)
+     }
+    ].
+
+build_geolocation(<<>>, Street, City, Region, Postcode) ->
+    <<Street/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>;
+build_geolocation(Ext, <<>>, City, Region, Postcode) ->
+    <<Ext/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>;
+build_geolocation(Ext, Street, City, Region, Postcode) ->
+    <<Ext/binary, ",", Street/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>.
