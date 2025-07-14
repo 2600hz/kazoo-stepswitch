@@ -868,7 +868,7 @@ get_emergency_address({Number, OffnetReq}) ->
     UserE911 = get_user_emergency_address(OffnetReq),
     {_, ExtAddr} = lists:foldl(fun(E, AccIn) ->
                                        {Done, _} = AccIn,
-                                       case has_e911_extended_address(E) andalso Done == 'false' of
+                                       case has_e911_extended_address(E) andalso Done =:= 'false' of
                                            'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
                                            'false' -> AccIn
                                        end
@@ -877,7 +877,7 @@ get_emergency_address({Number, OffnetReq}) ->
 
     {_, Addr} = lists:foldl(fun(E, AccIn) ->
                                     {Done, _} = AccIn,
-                                    case has_e911_address(E) andalso Done == 'false' of
+                                    case has_e911_address(E) andalso Done =:= 'false' of
                                         'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
                                         'false' -> AccIn
                                     end
@@ -936,11 +936,11 @@ get_account_doc(AccountDB, DocId) ->
 
 has_e911_extended_address(E911) ->
     ExtAddr = kz_json:get_binary_value(<<"street_address_extended">>, E911),
-    ExtAddr =/= <<"">> andalso ExtAddr =/= 'undefined'.
+    ExtAddr =/= <<>> andalso ExtAddr =/= 'undefined'.
 
 has_e911_address(E911) ->
     Addr = kz_json:get_binary_value(<<"street_address">>, E911),
-    Addr =/= <<"">> andalso Addr =/= 'undefined'.
+    Addr =/= <<>> andalso Addr =/= 'undefined'.
 
 build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     JObj = kz_json:from_list(Addr),
@@ -949,7 +949,7 @@ build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     City = kz_json:get_binary_value(<<"Emergency-Address-City">>, JObj, <<"">>),
     Region = kz_json:get_binary_value(<<"Emergency-Address-Region">>, JObj, <<"">>),
     Postcode = kz_json:get_binary_value(<<"Emergency-Address-Postal-Code">>, JObj, <<"">>),
-    CCVs = case Ext =/= <<"">> orelse Street =/= <<"">> of
+    CCVs = case Ext =/= <<>> orelse Street =/= <<>> of
                'true' -> [
                           {<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>},
                           {<<"sip_h_Geolocation">>, build_geolocation(Ext, Street, City, Region, Postcode)}
