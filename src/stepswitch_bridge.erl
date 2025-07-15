@@ -942,17 +942,17 @@ get_number_emergency_address(Number, OffnetReq) ->
     NumDoc = get_account_doc(AccountDB, knm_converters:normalize(Number, AccountId)),
     case kzd_phone_numbers:e911_address_id(NumDoc) of
         'undefined' -> kzd_phone_numbers:e911(NumDoc, kz_json:new()),
-            Props = props:filter_undefined([
-                {<<"locality">>, kzd_phone_numbers:e911_locality(NumDoc)}
-                ,{<<"house_number">>, kzd_phone_numbers:e911_legacy_data_house_number(NumDoc)}
-                ,{<<"region">>, kzd_phone_numbers:e911_region(NumDoc)}
-                ,{<<"postal_code">>, kzd_phone_numbers:e911_postal_code(NumDoc)}
-                ,{<<"street_address_extended">>, extract_e911_street_address_field(NumDoc, <<"street_address_extended">>)}
-                ,{<<"street_address">>, extract_e911_street_address_field(NumDoc, <<"street_address">>)}
-                ,{<<"latitude">>, kzd_phone_numbers:e911_latitude(NumDoc)}
-                ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
-            ]),
-            kz_json:from_list(Props);
+                       Props = props:filter_undefined([
+                                                       {<<"locality">>, kzd_phone_numbers:e911_locality(NumDoc)}
+                                                      ,{<<"house_number">>, kzd_phone_numbers:e911_legacy_data_house_number(NumDoc)}
+                                                      ,{<<"region">>, kzd_phone_numbers:e911_region(NumDoc)}
+                                                      ,{<<"postal_code">>, kzd_phone_numbers:e911_postal_code(NumDoc)}
+                                                      ,{<<"street_address_extended">>, extract_e911_street_address_field(NumDoc, <<"street_address_extended">>)}
+                                                      ,{<<"street_address">>, extract_e911_street_address_field(NumDoc, <<"street_address">>)}
+                                                      ,{<<"latitude">>, kzd_phone_numbers:e911_latitude(NumDoc)}
+                                                      ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
+                                                      ]),
+                       kz_json:from_list(Props);
         AddrId ->
             AddrDoc = get_account_doc(AccountDB, AddrId),
             format_emergency_address(AddrDoc)
@@ -984,15 +984,15 @@ has_e911_address(E911) ->
 
 format_emergency_address(AddrDoc) ->
     Props = props:filter_undefined([
-        {<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
-        ,{<<"house_number">>, kzd_addresses:emergency_house_number(AddrDoc)}
-        ,{<<"region">>, kzd_addresses:emergency_region(AddrDoc)}
-        ,{<<"postal_code">>, kzd_addresses:emergency_postal_code(AddrDoc)}
-        ,{<<"street_address_extended">>, kzd_addresses:emergency_additional_information(AddrDoc)}
-        ,{<<"street_address">>, kzd_addresses:emergency_street_address(AddrDoc)}
-        ,{<<"latitude">>, kzd_addresses:emergency_latitude(AddrDoc)}
-        ,{<<"longitude">>, kzd_addresses:emergency_longitude(AddrDoc)}
-    ]),
+                                    {<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
+                                   ,{<<"house_number">>, kzd_addresses:emergency_house_number(AddrDoc)}
+                                   ,{<<"region">>, kzd_addresses:emergency_region(AddrDoc)}
+                                   ,{<<"postal_code">>, kzd_addresses:emergency_postal_code(AddrDoc)}
+                                   ,{<<"street_address_extended">>, kzd_addresses:emergency_additional_information(AddrDoc)}
+                                   ,{<<"street_address">>, kzd_addresses:emergency_street_address(AddrDoc)}
+                                   ,{<<"latitude">>, kzd_addresses:emergency_latitude(AddrDoc)}
+                                   ,{<<"longitude">>, kzd_addresses:emergency_longitude(AddrDoc)}
+                                   ]),
     kz_json:from_list(Props).
 
 build_geolocation_ccvs(#state{e911_addr=Addr}) ->
