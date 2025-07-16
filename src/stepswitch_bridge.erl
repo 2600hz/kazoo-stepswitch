@@ -1008,6 +1008,7 @@ create_emergency_street_address(Doc) ->
 build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     JObj = kz_json:from_list(Addr),
     Ext = kz_json:get_binary_value(<<"Emergency-Address-Street-2">>, JObj, <<"">>),
+    House = kz_json:get_binary_value(<<"Emergency-Address-House-Number">>, JObj, <<>>),
     Street = kz_json:get_binary_value(<<"Emergency-Address-Street-1">>, JObj, <<"">>),
     City = kz_json:get_binary_value(<<"Emergency-Address-City">>, JObj, <<"">>),
     Region = kz_json:get_binary_value(<<"Emergency-Address-Region">>, JObj, <<"">>),
@@ -1015,7 +1016,7 @@ build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     CCVs = case (Ext =/= <<>>) or (Street =/= <<>>) of
                'true' -> [
                           {<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>},
-                          {<<"sip_h_Geolocation">>, build_geolocation(Ext, Street, City, Region, Postcode)}
+                          {<<"sip_h_Geolocation">>, build_geolocation(Ext, <<House/binary, " ", Street/binary>>, City, Region, Postcode)}
                          ];
                'false' -> []
            end,
