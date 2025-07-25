@@ -412,13 +412,14 @@ build_bridge(#state{endpoints=Endpoints
     FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, ReqCCVs, DefaultFailOnSingleReject),
 
     BridgeFromURI = bridge_from_uri(Number, OffnetReq),
-    UpdateCCVs = props:filter_undefined([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
-                                        ,{<<"Require-Ignore-Early-Media">>, 'null'}
-                                        ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
-                                        ,{<<"Account-ID">>, AccountId}
-                                        ,{<<"From-URI">>, BridgeFromURI}
-                                        ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                                        | build_geolocation_ccvs(State)]),
+    UpdateCCVs = [{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                 ,{<<"Require-Ignore-Early-Media">>, 'null'}
+                 ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"From-URI">>, BridgeFromURI}
+                 ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
+                 | build_geolocation_ccvs(State)
+                 ],
     CCVs = kz_json:set_values(UpdateCCVs, ReqCCVs),
 
     NewEndpoints = avoid_privacy_if_emergency_call(IsEmergency, Endpoints),
@@ -893,13 +894,17 @@ get_emergency_address({Number, OffnetReq}) ->
     NumE911 = get_number_emergency_address(Number, OffnetReq),
     UserE911 = get_user_emergency_address(OffnetReq),
     ComposeExtendedAddress = fun (E, {Done, _}=AccIn) ->
-                                     case (not Done) and has_e911_extended_address(E) =:= 'true' of
+                                     case (not Done)
+                                         andalso has_e911_extended_address(E)
+                                     of
                                          'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
                                          'false' -> AccIn
                                      end
                              end,
     ComposeStreetAddress = fun (E, {Done, _}=AccIn) ->
-                                   case (not Done) and has_e911_address(E) =:= 'true' of
+                                   case (not Done)
+                                       andalso has_e911_address(E)
+                                   of
                                        'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
                                        'false' -> AccIn
                                    end
@@ -971,12 +976,10 @@ get_account_doc(AccountDB, DocId) ->
     end.
 
 has_e911_extended_address(E911) ->
-    ExtAddr = kz_json:get_binary_value(<<"street_address_extended">>, E911),
-    (ExtAddr =/= 'undefined') and (ExtAddr =/= <<>>).
+    'undefined' =/= kz_json:get_ne_binary_value(<<"street_address_extended">>, E911).
 
 has_e911_address(E911) ->
-    Addr = kz_json:get_binary_value(<<"street_address">>, E911),
-    (Addr =/= 'undefined') and (Addr =/= <<>>).
+    'undefined' =/= kz_json:get_ne_binary_value(<<"street_address">>, E911).
 
 format_emergency_address(AddrDoc) ->
     kz_json:from_list([{<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
@@ -1015,12 +1018,14 @@ build_geo_ccvs(<<>>, _House, <<>>, _City, _Region, _Postcode) ->
     [];
 build_geo_ccvs(Ext, House, Street, City, Region, Postcode) ->
     [{<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>}
-    ,{<<"sip_h_Geolocation">>, build_geolocation(Ext, <<House/binary, " ", Street/binary>>, City, Region, Postcode)}
+    ,{<<"sip_h_Geolocation">>
+     ,build_geolocation(Ext, <<House/binary, " ", Street/binary>>, City, Region, Postcode)
+     }
     ].
 
-build_geolocation(<<"">>, Street, City, Region, Postcode) ->
+build_geolocation(<<>>, Street, City, Region, Postcode) ->
     <<Street/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>;
-build_geolocation(Ext, <<"">>, City, Region, Postcode) ->
+build_geolocation(Ext, <<>>, City, Region, Postcode) ->
     <<Ext/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>;
 build_geolocation(Ext, Street, City, Region, Postcode) ->
     <<Ext/binary, ",", Street/binary, ",", City/binary, ",", Region/binary, " ", Postcode/binary>>.
