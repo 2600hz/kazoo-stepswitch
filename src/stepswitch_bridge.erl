@@ -972,11 +972,11 @@ get_account_doc(AccountDB, DocId) ->
 
 has_e911_extended_address(E911) ->
     ExtAddr = kz_json:get_binary_value(<<"street_address_extended">>, E911),
-    ExtAddr =/= 'undefined' andalso ExtAddr =/= <<>>.
+    ExtAddr =/= 'undefined' and ExtAddr =/= <<>>.
 
 has_e911_address(E911) ->
     Addr = kz_json:get_binary_value(<<"street_address">>, E911),
-    Addr =/= 'undefined' andalso Addr =/= <<>>.
+    Addr =/= 'undefined' and Addr =/= <<>>.
 
 format_emergency_address(AddrDoc) ->
     kz_json:from_list([{<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
