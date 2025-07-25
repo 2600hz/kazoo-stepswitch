@@ -893,17 +893,17 @@ get_emergency_address({Number, OffnetReq}) ->
     NumE911 = get_number_emergency_address(Number, OffnetReq),
     UserE911 = get_user_emergency_address(OffnetReq),
     ComposeExtendedAddress = fun (E, {Done, _}=AccIn) ->
-                                       case (not Done) and has_e911_extended_address(E) =:= 'true' of
-                                           'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
-                                           'false' -> AccIn
-                                       end
-                               end,
+                                     case (not Done) and has_e911_extended_address(E) =:= 'true' of
+                                         'true' -> {'true', [{<<"Emergency-Address-Street-2">>, kz_json:get_binary_value(<<"street_address_extended">>, E)}]};
+                                         'false' -> AccIn
+                                     end
+                             end,
     ComposeStreetAddress = fun (E, {Done, _}=AccIn) ->
-                                    case (not Done) and has_e911_address(E) =:= 'true' of
-                                        'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
-                                        'false' -> AccIn
-                                    end
-                            end,
+                                   case (not Done) and has_e911_address(E) =:= 'true' of
+                                       'true' -> {'true', [{<<"Emergency-Address-Street-1">>, kz_json:get_binary_value(<<"street_address">>, E)}] ++ set_e911_address_meta(E)};
+                                       'false' -> AccIn
+                                   end
+                           end,
     {_, ExtAddr} = lists:foldl(ComposeExtendedAddress, {'false', []}, [DevE911, UserE911, NumE911]),
     {_, Addr} = lists:foldl(ComposeStreetAddress, {'false', []}, [DevE911, UserE911, NumE911]),
     Addr ++ ExtAddr.
@@ -941,13 +941,13 @@ get_number_emergency_address(Number, OffnetReq) ->
         'undefined' ->
             kzd_phone_numbers:e911(NumDoc, kz_json:new()),
             kz_json:from_list([ {<<"locality">>, kzd_phone_numbers:e911_locality(NumDoc)}
-                               ,{<<"house_number">>, kzd_phone_numbers:e911_legacy_data_house_number(NumDoc)}
-                               ,{<<"region">>, kzd_phone_numbers:e911_region(NumDoc)}
-                               ,{<<"postal_code">>, kzd_phone_numbers:e911_postal_code(NumDoc)}
-                               ,{<<"street_address_extended">>, extract_e911_street_address_field(NumDoc, <<"street_address_extended">>)}
-                               ,{<<"street_address">>, extract_e911_street_address_field(NumDoc, <<"street_address">>)}
-                               ,{<<"latitude">>, kzd_phone_numbers:e911_latitude(NumDoc)}
-                               ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
+                              ,{<<"house_number">>, kzd_phone_numbers:e911_legacy_data_house_number(NumDoc)}
+                              ,{<<"region">>, kzd_phone_numbers:e911_region(NumDoc)}
+                              ,{<<"postal_code">>, kzd_phone_numbers:e911_postal_code(NumDoc)}
+                              ,{<<"street_address_extended">>, extract_e911_street_address_field(NumDoc, <<"street_address_extended">>)}
+                              ,{<<"street_address">>, extract_e911_street_address_field(NumDoc, <<"street_address">>)}
+                              ,{<<"latitude">>, kzd_phone_numbers:e911_latitude(NumDoc)}
+                              ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
                               ]);
         AddrId ->
             AddrDoc = get_account_doc(AccountDB, AddrId),
@@ -972,21 +972,21 @@ get_account_doc(AccountDB, DocId) ->
 
 has_e911_extended_address(E911) ->
     ExtAddr = kz_json:get_binary_value(<<"street_address_extended">>, E911),
-    ExtAddr =/= 'undefined' and ExtAddr =/= <<>>.
+    (ExtAddr =/= 'undefined') and (ExtAddr =/= <<>>).
 
 has_e911_address(E911) ->
     Addr = kz_json:get_binary_value(<<"street_address">>, E911),
-    Addr =/= 'undefined' and Addr =/= <<>>.
+    (Addr =/= 'undefined') and (Addr =/= <<>>).
 
 format_emergency_address(AddrDoc) ->
     kz_json:from_list([{<<"locality">>, kzd_addresses:emergency_locality(AddrDoc)}
-                        ,{<<"house_number">>, kzd_addresses:emergency_house_number(AddrDoc)}
-                        ,{<<"region">>, kzd_addresses:emergency_region(AddrDoc)}
-                        ,{<<"postal_code">>, kzd_addresses:emergency_postal_code(AddrDoc)}
-                        ,{<<"street_address_extended">>, kzd_addresses:emergency_additional_information(AddrDoc)}
-                        ,{<<"street_address">>, create_emergency_street_address(AddrDoc)}
-                        ,{<<"latitude">>, kzd_addresses:emergency_latitude(AddrDoc)}
-                        ,{<<"longitude">>, kzd_addresses:emergency_longitude(AddrDoc)}
+                      ,{<<"house_number">>, kzd_addresses:emergency_house_number(AddrDoc)}
+                      ,{<<"region">>, kzd_addresses:emergency_region(AddrDoc)}
+                      ,{<<"postal_code">>, kzd_addresses:emergency_postal_code(AddrDoc)}
+                      ,{<<"street_address_extended">>, kzd_addresses:emergency_additional_information(AddrDoc)}
+                      ,{<<"street_address">>, create_emergency_street_address(AddrDoc)}
+                      ,{<<"latitude">>, kzd_addresses:emergency_latitude(AddrDoc)}
+                      ,{<<"longitude">>, kzd_addresses:emergency_longitude(AddrDoc)}
                       ]).
 
 -spec create_emergency_street_address(kz_json:object()) -> binary().
