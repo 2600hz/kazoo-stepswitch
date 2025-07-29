@@ -691,8 +691,9 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
 
 maybe_send_emergency_bridge_notification(Num, #state{resource_req=OffnetReq}=State) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
-    AccountDoc = get_doc(kzs_util:format_account_db(AccountId), AccountId),
-    case kz_json:get_boolean_value([<<"notifications">>, <<"emergency">>, <<"enabled">>], AccountDoc, 'false') of
+
+    AccountDoc = get_doc(AccountId, AccountId),
+    case kzd_accounts:notifications_emergency_enabled(AccountDoc, 'false') of
         'true' ->
             lager:info("emergency notification is enabled on account ~s", [AccountId]),
             send_emergency_bridge_notification(Num, State);
@@ -939,8 +940,8 @@ get_device_emergency_address(OffnetReq) ->
     case kz_json:get_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Authorizing-Type">>], OffnetReq) of
         <<"device">> ->
             AccountId = kapi_offnet_resource:account_id(OffnetReq),
-            AuthID = kz_json:get_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Authorizing-ID">>], OffnetReq),
-            DevDoc = get_doc(kzs_util:format_account_db(AccountId), AuthID),
+            AuthId = kz_json:get_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Authorizing-ID">>], OffnetReq),
+            DevDoc = get_doc(AccountId, AuthId),
             format_emergency_address(kzd_devices:addresses(DevDoc, kz_json:new()));
         _AuthType ->
             kz_json:new()
@@ -949,8 +950,7 @@ get_device_emergency_address(OffnetReq) ->
 -spec get_number_emergency_address(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:object().
 get_number_emergency_address(Number, OffnetReq) ->
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
-    AccountDB = kzs_util:format_account_db(AccountId),
-    NumDoc = get_doc(AccountDB, knm_converters:normalize(Number, AccountId)),
+    NumDoc = get_doc(AccountId, knm_converters:normalize(Number, AccountId)),
 
     case kz_json:get_ne_binary_value([<<"e911">>, <<"address_id">>], NumDoc) of
         'undefined' ->
@@ -965,23 +965,21 @@ get_number_emergency_address(Number, OffnetReq) ->
                               ,{<<"longitude">>, kzd_phone_numbers:e911_longitude(NumDoc)}
                               ]);
         AddrId ->
-            AddrDoc = get_doc(AccountDB, AddrId),
+            AddrDoc = get_doc(AccountId, AddrId),
             format_emergency_address(AddrDoc)
     end.
 
 -spec get_user_emergency_address(kapi_offnet_resource:req()) -> kz_json:object().
 get_user_emergency_address(OffnetReq) ->
     UserId = kz_json:get_ne_binary_value([<<"Requestor-Custom-Channel-Vars">>, <<"Owner-ID">>], OffnetReq),
-    AccountDB = kzs_util:format_account_db(kapi_offnet_resource:account_id(OffnetReq)),
-    UserDoc = get_doc(AccountDB, UserId),
+    UserDoc = get_doc(kapi_offnet_resource:account_id(OffnetReq), UserId),
     format_emergency_address(kzd_users:addresses(UserDoc, kz_json:new())).
 
-get_doc(_AccountDB, 'undefined') ->
+get_doc(_AccountId, 'undefined') ->
     kz_json:new();
-get_doc(AccountDB, DocId) ->
-    case kz_datamgr:open_cache_doc(AccountDB, DocId) of
-        {'ok', Doc} ->
-            Doc;
+get_doc(AccountId, DocId) ->
+    case kz_datamgr:open_cache_doc(AccountId, DocId) of
+        {'ok', Doc} -> Doc;
         {'error', _} -> kz_json:new()
     end.
 
@@ -1022,13 +1020,12 @@ build_geolocation_ccvs(#state{e911_addr=Addr}) ->
     City = kz_json:get_binary_value(<<"Emergency-Address-City">>, JObj, <<>>),
     Region = kz_json:get_binary_value(<<"Emergency-Address-Region">>, JObj, <<>>),
     Postcode = kz_json:get_binary_value(<<"Emergency-Address-Postal-Code">>, JObj, <<>>),
-    CCVs = build_geo_ccvs(Ext, House, Street, City, Region, Postcode),
-    lager:debug("geolocation ccvs is ~p", [CCVs]),
-    CCVs.
+    build_geo_ccvs(Ext, House, Street, City, Region, Postcode).
 
 build_geo_ccvs(<<>>, _House, <<>>, _City, _Region, _Postcode) ->
     [];
 build_geo_ccvs(Ext, House, Street, City, Region, Postcode) ->
+    lager:debug("adding geo-location SIP headers"),
     [{<<"sip_h_Geolocation-Routing">>, <<"\"yes\"">>}
     ,{<<"sip_h_Geolocation">>
      ,build_geolocation(Ext, <<House/binary, " ", Street/binary>>, City, Region, Postcode)
