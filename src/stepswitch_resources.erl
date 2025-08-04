@@ -475,18 +475,22 @@ filter_resources(OffnetJObj, Resources) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     case kz_term:is_true(?SHOULD_MERGE_RESELLER_FLAGS(AccountId)) of
         'true' ->
-            filter_resources_by_flags(get_reseller_flags(AccountId) ++ Flags, Resources);
+            ResellerFlags = get_reseller_flags(OffnetJObj),
+            lager:info("force appending flags from reseller: ~s", [kz_binary:join(ResellerFlags)]),
+            filter_resources_by_flags(ResellerFlags ++ Flags, Resources);
         'false' ->
             filter_resources_by_flags(Flags, Resources)
     end.
 
--spec get_reseller_flags(kz_term:ne_binary()) -> kz_term:ne_binaries().
-get_reseller_flags(AccountId) ->
+-spec get_reseller_flags(kz_jsn:object()) -> kz_term:ne_binaries().
+get_reseller_flags(OffnetReq) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
     case kz_services_reseller:is_reseller(AccountId) of
         'true' ->
             [];
         'false' ->
-            kapps_account_config:get_ne_binaries(AccountId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
+            ResellerId = kz_services_reseller:get_id(AccountId),
+            kapps_account_config:get_ne_binaries(ResellerId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
     end.
 
 filter_resources_by_flags([], Resources) ->
