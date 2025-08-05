@@ -108,10 +108,6 @@
 -define(DEFAULT_RTCP_MUX, kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_rtcp_mux">>)).
 -define(DIRECT_RESELLER_ID_EXPANDABLE_MACRO, <<"{direct_reseller_id}">>).
 
--define(SHOULD_MERGE_RESELLER_FLAGS(AccountId)
-       ,kapps_account_config:get_from_reseller(AccountId, ?SS_CONFIG_CAT, <<"force_reseller_outbound_flags">>, 'false')
-       ).
-
 -record(gateway, {server :: kz_term:api_binary()
                  ,port :: kz_term:api_integer()
                  ,realm :: kz_term:api_binary()
@@ -472,25 +468,30 @@ search_gateway(_, _, _, _) ->
           resources().
 filter_resources(OffnetJObj, Resources) ->
     Flags = kapi_offnet_resource:flags(OffnetJObj, []),
-    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
-    case kz_term:is_true(?SHOULD_MERGE_RESELLER_FLAGS(AccountId)) of
-        'true' ->
-            ResellerFlags = get_reseller_flags(OffnetJObj),
-            lager:info("force appending flags from reseller: ~s", [kz_binary:join(ResellerFlags)]),
-            filter_resources_by_flags(ResellerFlags ++ Flags, Resources);
-        'false' ->
-            filter_resources_by_flags(Flags, Resources)
+    case direct_reseller_id(OffnetJObj) of
+        'undefined' ->
+            filter_resources_by_flags(Flags, Resources);
+        DirectResellerId ->
+            %% direct reseller:
+            %% if account is reseller get from the account itself
+            %% if not get from its reseller
+            ShouldForceFlags = kapps_account_config:get(DirectResellerId, ?SS_CONFIG_CAT, <<"force_reseller_outbound_flags">>, 'false'),
+            case kz_term:is_true(ShouldForceFlags) of
+                'true' ->
+                    ResellerFlags = kapps_account_config:get_ne_binaries(DirectResellerId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, []),
+                    lager:info("force appending flags from reseller: ~s", [kz_binary:join(ResellerFlags)]),
+                    filter_resources_by_flags(lists:uniq(ResellerFlags ++ Flags), Resources);
+                'false' ->
+                    filter_resources_by_flags(Flags, Resources)
+            end
     end.
 
--spec get_reseller_flags(kz_jsn:object()) -> kz_term:ne_binaries().
-get_reseller_flags(OffnetReq) ->
-    AccountId = kapi_offnet_resource:account_id(OffnetReq),
+-spec direct_reseller_id(kapi_offnet_resource:req()) -> kz_term:api_ne_binary().
+direct_reseller_id(OffnetJObj) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     case kz_services_reseller:is_reseller(AccountId) of
-        'true' ->
-            [];
-        'false' ->
-            ResellerId = kz_services_reseller:get_id(AccountId),
-            kapps_account_config:get_ne_binaries(ResellerId, ?SS_CONFIG_CAT, <<"reseller_outbound_flags">>, [])
+        'true' -> AccountId;
+        'false' -> kz_services_reseller:get_id(AccountId)
     end.
 
 filter_resources_by_flags([], Resources) ->
