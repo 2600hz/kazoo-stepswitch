@@ -457,7 +457,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{?KEY_SIP_DIVERSIONS, kapi_offnet_resource:sip_diversions(OffnetReq)}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
-      | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+      | maybe_add_privacy_headers(IsEmergency, OffnetReq) ++ kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -type emergency_override() :: {boolean(), kz_term:api_binary(), kz_term:api_binary()}.
@@ -886,3 +886,15 @@ maybe_add_pidflo(Endpoint, OffnetReq, BridgeFromURI, 'true') ->
                               ,Endpoint
                               )
     end.
+
+-spec maybe_add_privacy_headers(boolean(), kapi_offnet_resource:req()) -> kz_term:proplist().
+maybe_add_privacy_headers('true', _OffnetReq) ->
+    [];
+maybe_add_privacy_headers('false', OffnetReq) ->
+    RequestorCCVs = kz_json:get_ne_json_value(<<"Requestor-Custom-Channel-Vars">>, OffnetReq, kz_json:new()),
+    [{<<"Privacy-Method">>, kz_privacy:get_method(OffnetReq)}
+    ,{<<"Privacy-Hide-Name">>, kz_privacy:should_hide_name(OffnetReq)
+      orelse kz_privacy:should_hide_name(RequestorCCVs)}
+    ,{<<"Privacy-Hide-Number">>, kz_privacy:should_hide_number(OffnetReq)
+      orelse kz_privacy:should_hide_number(RequestorCCVs)}
+    ].
