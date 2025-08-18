@@ -117,6 +117,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}} , #state{control_queue=ControlQ}=State) ->
     Payload = build_local_extension(State),
+    lager:info("publishing bridge command to ~s : ~s", [ControlQ, kz_json:encode(kz_json:from_list(Payload))]),
     'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
     lager:debug("sent local extension command to ~s", [ControlQ]),
     {'noreply', State};
@@ -298,7 +299,17 @@ build_local_extension(#state{number_props=Props
     CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new()),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
 
-    CCVs = kz_json:set_values([{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}], CCVsOrig),
+    IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVsOrig, 'false')
+        orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),
+
+    DefaultFailOnSingleReject = kapi_offnet_resource:fail_on_single_reject(OffnetReq, ?DEFAULT_FAIL_ON_SINGLE_REJECT(AccountId)),
+    FailOnSingleReject = kz_json:get_value(<<"Require-Fail-On-Single-Reject">>, CCVsOrig, DefaultFailOnSingleReject),
+
+    CCVUpdates = [{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
+                 ,{<<"Require-Ignore-Early-Media">>, 'null'}
+                 ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
+                 ],
+    CCVs = kz_json:set_values(CCVUpdates, CCVsOrig),
 
     {AssertedNumber, AssertedName} = stepswitch_bridge:maybe_override_asserted_identity(OffnetReq
                                                                                        ,{'false'
@@ -306,41 +317,41 @@ build_local_extension(#state{number_props=Props
                                                                                         ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
                                                                                         }),
 
-    CCVUpdates = kz_json:from_list(
-                   [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Realm">>, Realm}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
+    EndpointCCVs = kz_json:from_list(
+                     [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Realm">>, Realm}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
 
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", Realm/binary>>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", Realm/binary>>}
 
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-Token">>, <<OriginalAccountId/binary, "@", AccountId/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-Token">>, <<OriginalAccountId/binary, "@", AccountId/binary>>}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-User">>, Number}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-URI-Realm">>, Realm}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "X-AUTH-From-User">>, CIDNum}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-Cross-Boundary">>, true}
+                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, (?KEY_SIP_DIVERSIONS)/binary>>, kapi_offnet_resource:sip_diversions(OffnetReq)}
 
-                   ,{<<"Account-ID">>, OriginalAccountId}
-                   ,{<<"Reseller-ID">>, OriginalResellerId}
-                   ,{<<"Realm">>, FromRealm}
-                   ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
-                   ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
-                   ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
-                   ,{<<"Resource-ID">>, AccountId}
-                   ,{<<"Resource-Type">>, <<"onnet-termination">>}
-                   ,{<<"Account-Cross-Boundary">>, true}
-                   ]),
+                     ,{<<"Account-ID">>, OriginalAccountId}
+                     ,{<<"Reseller-ID">>, OriginalResellerId}
+                     ,{<<"Realm">>, FromRealm}
+                     ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                     ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
+                     ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                     ,{<<"Resource-ID">>, AccountId}
+                     ,{<<"Resource-Type">>, <<"onnet-termination">>}
+                     ,{<<"Account-Cross-Boundary">>, true}
+                     ]),
 
     Endpoint = kz_json:from_list(
                  [{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
-                 ,{<<"Custom-Channel-Vars">>, CCVUpdates}
+                 ,{<<"Custom-Channel-Vars">>, EndpointCCVs}
                  ,{<<"Enable-T38-Fax">>, 'false'}
                  ,{<<"Enable-T38-Fax-Request">>, 'false'}
                  ,{<<"Ignore-Early-Media">>, 'true'}
@@ -377,6 +388,9 @@ build_local_extension(#state{number_props=Props
       ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, CIDNum)}
 
       ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
+
+      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
 
       ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Media">>, <<"process">>}

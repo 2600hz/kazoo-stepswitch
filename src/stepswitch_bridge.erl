@@ -309,10 +309,9 @@ maybe_bridge(#state{endpoints=Endpoints
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
-            kapi_dialplan:publish_command(ControlQ
-                                         ,build_bridge(State, Number, Name, 'false')
-                                         ),
-            lager:debug("sent bridge command to ~s", [ControlQ])
+            BridgeCmd = build_bridge(State, Number, Name, 'false'),
+            lager:info("publishing bridge command to ~s : ~s", [ControlQ, kz_json:encode(kz_json:from_list(BridgeCmd))]),
+            kapi_dialplan:publish_command(ControlQ, BridgeCmd)
     end.
 
 -spec maybe_bridge_emergency(state()) -> 'ok'.
@@ -352,10 +351,9 @@ maybe_deny_emergency_bridge(#state{control_queue=ControlQ
                                   }=State, Number, Name) ->
     _ = send_emergency_bridge_notification(Number, State),
     UpdatedEndpoints = update_endpoints_emergency_cid(Endpoints, Number, Name),
-    kapi_dialplan:publish_command(ControlQ
-                                 ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name, 'true')
-                                 ),
-    lager:debug("sent bridge command to ~s", [ControlQ]).
+    BridgeCmd = build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name, 'true'),
+    lager:info("publishing bridge command to ~s : ~s", [ControlQ, kz_json:encode(kz_json:from_list(BridgeCmd))]),
+    kapi_dialplan:publish_command(ControlQ, BridgeCmd).
 
 -spec update_endpoints_emergency_cid(stepswitch_resources:endpoints(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
           stepswitch_resources:endpoints().
