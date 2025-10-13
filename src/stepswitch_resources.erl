@@ -1217,13 +1217,21 @@ resource_from_jobj(JObj) ->
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
                      ,classifier_include_pidflo=kz_json:is_true(<<"classifier_include_pidflo">>, JObj)
                      ,gateway_strategy=kz_term:to_atom(kzd_resources:gateway_strategy(JObj, <<"sequential">>), 'true')
-                     ,ccvs = kzd_resources:ccvs(JObj, kz_json:new())
+                     ,ccvs=maybe_authz_number_module(JObj)
                      ,sip_headers = kzd_resources:cshs(JObj, kz_json:new())
                      ,sip_interface = kzd_resources:custom_sip_interface(JObj)
                      ,supports_pidflo = kzd_resources:supports_pidflo(JObj)
                      },
     Gateways = gateways_from_jobjs(kzd_resources:gateways(JObj, []), Resource),
     Resource#resrc{gateways=Gateways}.
+
+-spec maybe_authz_number_module(kzd_resources:doc()) -> kz_json:object().
+maybe_authz_number_module(JObj) ->
+    CCVs = kzd_resources:ccvs(JObj, kz_json:new()),
+    case kz_json:get_ne_binary_value(<<"pvt_number_module">>, JObj) of
+        'undefined' ->  kz_json:delete_key(<<"Authz-Number-Module">>, CCVs);
+        AuthzMod -> kz_json:set_value(<<"Authz-Number-Module">>, AuthzMod, CCVs)
+    end.
 
 -spec resource_bypass_media(kzd_resources:doc()) -> boolean().
 resource_bypass_media(JObj) ->
